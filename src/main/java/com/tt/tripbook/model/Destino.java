@@ -2,6 +2,8 @@ package com.tt.tripbook.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,9 +15,11 @@ public class Destino {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "a cidade é obrigatória")
     @Column(nullable = false)
     private String cidade;
 
+    @NotBlank(message = "o país é obrigatória")
     @Column(nullable = false)
     private String pais;
 

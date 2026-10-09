@@ -6,6 +6,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+
 @Entity
 @Table(name = "passageiro")
 public class Passageiro {
@@ -14,12 +18,17 @@ public class Passageiro {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @NotBlank(message = "o nome é obrigatório") //É uma validação, que recusa o dado antes de chegar ao banco e permite uma mensagem
+    @Column(nullable = false) //Restrição do banco
     private String nome;
 
+    @NotBlank(message = "o CPF é obrigatório")
+    @Pattern(regexp = "\\d{11}", message = "o CPF deve ter 11 dígitos numéricos")
     @Column(nullable = false, unique = true, length = 11)
     private String cpf;
 
+    @NotBlank(message = "o e-mail é obrigatório")
+    @Email(message = "e-mail inválido")
     @Column(nullable = false)
     private String email;
 
@@ -30,6 +39,8 @@ public class Passageiro {
     @OneToMany(mappedBy = "passageiro", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("passageiro")
     private List<Viagem> viagens = new ArrayList<>();
+
+    
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -43,4 +54,6 @@ public class Passageiro {
     public void setDataNascimento(LocalDate dataNascimento) { this.dataNascimento = dataNascimento; }
     public List<Viagem> getViagens() { return viagens; }
     public void setViagens(List<Viagem> viagens) { this.viagens = viagens; }
+
+    
 }

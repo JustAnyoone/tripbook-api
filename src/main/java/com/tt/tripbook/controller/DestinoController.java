@@ -5,6 +5,8 @@ import com.tt.tripbook.service.DestinoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +42,7 @@ public class DestinoController {
     @Operation(summary = "Cria um novo destino")
     @ApiResponse(responseCode = "201", description = "Destino criado")
     @PostMapping
-    public ResponseEntity<Destino> criar(@RequestBody Destino destino) {
+    public ResponseEntity<Destino> criar(@Valid @RequestBody Destino destino) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(destino));
     }
 
@@ -48,7 +50,7 @@ public class DestinoController {
     @ApiResponse(responseCode = "200", description = "Destino atualizado")
     @ApiResponse(responseCode = "404", description = "Destino não encontrado")
     @PutMapping("/{id}")
-    public Destino atualizar(@PathVariable Long id, @RequestBody Destino destino) {
+    public Destino atualizar(@PathVariable Long id, @Valid @RequestBody Destino destino) {
         return service.atualizar(id, destino);
     }
 
