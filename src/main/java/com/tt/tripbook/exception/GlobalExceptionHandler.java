@@ -40,4 +40,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiError(409, "Operação recusada: o registro está em uso ou viola uma restrição de dados."));
     }
+
+    @ExceptionHandler(RegraDeNegocioException.class)
+    public ResponseEntity<ApiError> regraDeNegocio(RegraDeNegocioException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(new ApiError(400, ex.getMessage()));
+    }
 }

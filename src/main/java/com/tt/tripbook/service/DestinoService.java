@@ -2,9 +2,15 @@
 
 package com.tt.tripbook.service;
 
+import com.tt.tripbook.exception.ConflitoException;
 import com.tt.tripbook.exception.RecursoNaoEncontradoException;
 import com.tt.tripbook.model.Destino;
 import com.tt.tripbook.repository.DestinoRepository;
+import com.tt.tripbook.repository.ViagemRepository;
+
+import com.tt.tripbook.exception.ConflitoException;
+import com.tt.tripbook.repository.ViagemRepository;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,9 +19,11 @@ import java.util.List;
 public class DestinoService {
 
     private final DestinoRepository repository;
+    private final ViagemRepository viagemRepository;
 
-    public DestinoService(DestinoRepository repository) {
+    public DestinoService(DestinoRepository repository, ViagemRepository viagemRepository) {
         this.repository = repository;
+        this.viagemRepository = viagemRepository;
     }
 
     public List<Destino> listar() {
@@ -41,7 +49,10 @@ public class DestinoService {
     }
 
     public void deletar(Long id) {
-        Destino existente = buscar(id); // lança 404 se não existir
-        repository.delete(existente);
+    Destino existente = buscar(id);
+    if (viagemRepository.existsByDestinoId(id)) {
+        throw new ConflitoException("Não é possível remover o destino: existem viagens associadas a ele");
+    }
+    repository.delete(existente);
     }
 }
