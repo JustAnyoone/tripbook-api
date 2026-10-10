@@ -2,9 +2,11 @@ package com.tt.tripbook.controller;
 
 import com.tt.tripbook.model.Destino;
 import com.tt.tripbook.service.DestinoService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
