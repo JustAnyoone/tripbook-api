@@ -1,6 +1,7 @@
 package com.tt.tripbook.controller;
 
-import com.tt.tripbook.model.Passenger;
+import com.tt.tripbook.dto.PassengerRequest;
+import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.service.PassengerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/passengers")
-@Tag(name = "Passengers", description = "Registration and lookup of Passengers")
+@Tag(name = "passengers", description = "Manage passengers")
 public class PassengerController {
 
     private final PassengerService service;
@@ -23,42 +24,41 @@ public class PassengerController {
         this.service = service;
     }
 
-    @Operation(summary = "Lists all Passengers")
-    @ApiResponse(responseCode = "200", description = "List of Passengers")
+    @Operation(summary = "List all passengers")
     @GetMapping
-    public List<Passenger> findAll() {
+    public List<PassengerResponse> findAll() {
         return service.findAll();
     }
 
-    @Operation(summary = "Finds a Passenger by id")
+    @Operation(summary = "Find a passenger by id")
     @ApiResponse(responseCode = "200", description = "Passenger found")
     @ApiResponse(responseCode = "404", description = "Passenger not found")
     @GetMapping("/{id}")
-    public Passenger findById(@PathVariable Long id) {
+    public PassengerResponse findById(@PathVariable Long id) {
         return service.findById(id);
     }
 
-    @Operation(summary = "Registers a new Passenger")
+    @Operation(summary = "Register a passenger")
     @ApiResponse(responseCode = "201", description = "Passenger created")
     @ApiResponse(responseCode = "400", description = "Invalid data")
-    @ApiResponse(responseCode = "409", description = "DocumentNumber already registered")
+    @ApiResponse(responseCode = "409", description = "Document number already registered")
     @PostMapping
-    public ResponseEntity<Passenger> create(@Valid @RequestBody Passenger passenger) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(passenger));
+    public ResponseEntity<PassengerResponse> create(@Valid @RequestBody PassengerRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
-    @Operation(summary = "Updates an existing Passenger")
+    @Operation(summary = "Update a passenger")
     @ApiResponse(responseCode = "200", description = "Passenger updated")
     @ApiResponse(responseCode = "400", description = "Invalid data")
     @ApiResponse(responseCode = "404", description = "Passenger not found")
-    @ApiResponse(responseCode = "409", description = "DocumentNumber already belongs to another Passenger")
+    @ApiResponse(responseCode = "409", description = "Document number belongs to another passenger")
     @PutMapping("/{id}")
-    public Passenger update(@PathVariable Long id, @Valid @RequestBody Passenger passenger) {
-        return service.update(id, passenger);
+    public PassengerResponse update(@PathVariable Long id, @Valid @RequestBody PassengerRequest request) {
+        return service.update(id, request);
     }
 
-    @Operation(summary = "Removes a Passenger and their trips")
-    @ApiResponse(responseCode = "204", description = "Passenger removed")
+    @Operation(summary = "Delete a passenger and their trips")
+    @ApiResponse(responseCode = "204", description = "Passenger deleted")
     @ApiResponse(responseCode = "404", description = "Passenger not found")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

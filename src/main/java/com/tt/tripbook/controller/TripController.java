@@ -1,6 +1,7 @@
 package com.tt.tripbook.controller;
 
-import com.tt.tripbook.model.Trip;
+import com.tt.tripbook.dto.TripRequest;
+import com.tt.tripbook.dto.TripResponse;
 import com.tt.tripbook.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/trips")
-@Tag(name = "trips", description = "Trip bookings: link a Passenger to a Destination")
+@Tag(name = "trips", description = "Trip bookings: each trip links one passenger to one destination")
 public class TripController {
 
     private final TripService service;
@@ -23,58 +24,54 @@ public class TripController {
         this.service = service;
     }
 
-    @Operation(summary = "Lists all trips")
-    @ApiResponse(responseCode = "200", description = "List of trips")
+    @Operation(summary = "List all trips")
     @GetMapping
-    public List<Trip> findAll() {
+    public List<TripResponse> findAll() {
         return service.findAll();
     }
 
-    @Operation(summary = "Finds a Trip by id")
+    @Operation(summary = "Find a trip by id")
     @ApiResponse(responseCode = "200", description = "Trip found")
     @ApiResponse(responseCode = "404", description = "Trip not found")
     @GetMapping("/{id}")
-    public Trip findById(@PathVariable Long id) {
+    public TripResponse findById(@PathVariable Long id) {
         return service.findById(id);
     }
 
-    @Operation(summary = "Lists the trips of a Passenger")
-    @ApiResponse(responseCode = "200", description = "Passenger's trips")
+    @Operation(summary = "List the trips of a passenger")
     @ApiResponse(responseCode = "404", description = "Passenger not found")
     @GetMapping("/passenger/{passengerId}")
-    public List<Trip> byPassenger(@PathVariable Long passengerId) {
-        return service.findAllPassenger(passengerId);
+    public List<TripResponse> byPassenger(@PathVariable Long passengerId) {
+        return service.findByPassenger(passengerId);
     }
 
-    @Operation(summary = "Lists the trips to a Destination")
-    @ApiResponse(responseCode = "200", description = "Destination's trips")
+    @Operation(summary = "List the trips to a destination")
     @ApiResponse(responseCode = "404", description = "Destination not found")
     @GetMapping("/destination/{destinationId}")
-    public List<Trip> byDestination(@PathVariable Long destinationId) {
-        return service.findAllDestination(destinationId);
+    public List<TripResponse> byDestination(@PathVariable Long destinationId) {
+        return service.findByDestination(destinationId);
     }
 
-    @Operation(summary = "Creates a Trip",
-               description = "Provide only the id of the Passenger and the Destination, for example: \"Passenger\": { \"id\": 1 }")
+    @Operation(summary = "Create a trip", description = "Send only the ids of the passenger and the destination")
     @ApiResponse(responseCode = "201", description = "Trip created")
     @ApiResponse(responseCode = "400", description = "Invalid data or inconsistent dates")
-    @ApiResponse(responseCode = "404", description = "Passenger or Destination not found")
+    @ApiResponse(responseCode = "404", description = "Passenger or destination not found")
     @PostMapping
-    public ResponseEntity<Trip> create(@Valid @RequestBody Trip trip) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(trip));
+    public ResponseEntity<TripResponse> create(@Valid @RequestBody TripRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
-    @Operation(summary = "Updates an existing Trip")
+    @Operation(summary = "Update a trip")
     @ApiResponse(responseCode = "200", description = "Trip updated")
     @ApiResponse(responseCode = "400", description = "Invalid data or inconsistent dates")
-    @ApiResponse(responseCode = "404", description = "Trip, Passenger or Destination not found")
+    @ApiResponse(responseCode = "404", description = "Trip, passenger or destination not found")
     @PutMapping("/{id}")
-    public Trip update(@PathVariable Long id, @Valid @RequestBody Trip trip) {
-        return service.update(id, trip);
+    public TripResponse update(@PathVariable Long id, @Valid @RequestBody TripRequest request) {
+        return service.update(id, request);
     }
 
-    @Operation(summary = "Removes a Trip")
-    @ApiResponse(responseCode = "204", description = "Trip removed")
+    @Operation(summary = "Delete a trip")
+    @ApiResponse(responseCode = "204", description = "Trip deleted")
     @ApiResponse(responseCode = "404", description = "Trip not found")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
