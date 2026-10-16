@@ -1,5 +1,7 @@
 # TripBook
 
+![CI](https://github.com/SEU_USUARIO/NOME_DO_REPO/actions/workflows/ci.yml/badge.svg?branch=portfolio)
+
 API REST para gerenciamento de viagens, passageiros e destinos, desenvolvida com Spring Boot, Spring Data JPA e MySQL.
 
 Projeto acadêmico do curso de Programação Orientada a Objetos (CEUB).
