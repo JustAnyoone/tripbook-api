@@ -1,0 +1,183 @@
+package com.tt.tripbook.controller;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.tt.tripbook.dto.DestinationResponse;
+import com.tt.tripbook.dto.PassengerResponse;
+import com.tt.tripbook.dto.TripRequest;
+import com.tt.tripbook.dto.TripResponse;
+import com.tt.tripbook.exception.BusinessRuleException;
+import com.tt.tripbook.exception.GlobalExceptionHandler;
+import com.tt.tripbook.exception.ResourceNotFoundException;
+import com.tt.tripbook.service.TripService;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+@ExtendWith(MockitoExtension.class)
+class TripControllerTest {
+
+    // Valid body used as the base; each validation test breaks exactly one field
+    private static final String VALID_TRIP = """
+            {
+              "departureDate": "2026-12-20",
+              "returnDate": "2026-12-30",
+              "price": 3500.50,
+              "status": "CONFIRMED",
+              "passengerId": 1,
+              "destinationId": 1
+            }
+            """;
+
+    @Mock
+    private TripService service;
+
+    @InjectMocks
+    private TripController controller;
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
+
+    @Test
+    void create_returns201_withThePassengerAndDestinationInsideTheTrip() throws Exception {
+        when(service.create(any(TripRequest.class))).thenReturn(response());
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.passenger.name").value("Ana Souza"))
+                .andExpect(jsonPath("$.destination.city").value("Lisbon"));
+    }
+
+    @Test
+    void create_returns400_whenTheStatusIsNotOneOfTheAllowedValues() throws Exception {
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP.replace("\"CONFIRMED\"", "\"XYZ\"")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("status: status must be PENDING, CONFIRMED or CANCELLED"));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void create_returns400_whenThePriceIsNegative() throws Exception {
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP.replace("3500.50", "-10")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("price: price must be greater than zero"));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void create_returns400_whenThePassengerIdIsMissing() throws Exception {
+        // Removing the whole line keeps the JSON valid because it is not the last property
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP.replace("\"passengerId\": 1,", "")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("passengerId: passengerId is required"));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void create_returns400_whenTheServiceRejectsTheDates() throws Exception {
+        when(service.create(any(TripRequest.class)))
+                .thenThrow(new BusinessRuleException("Return date cannot be before departure date"));
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP.replace("2026-12-30", "2026-12-10")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Return date cannot be before departure date"));
+    }
+
+    @Test
+    void create_returns404_whenThePassengerDoesNotExist() throws Exception {
+        when(service.create(any(TripRequest.class)))
+                .thenThrow(new ResourceNotFoundException("Passenger not found: id 999"));
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP.replace("\"passengerId\": 1", "\"passengerId\": 999")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Passenger not found: id 999"));
+    }
+
+    @Test
+    void create_returns400_whenTheJsonIsMalformed() throws Exception {
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"price\": "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void create_returns400_whenADateIsInvalid() throws Exception {
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP.replace("2026-12-20", "2026-13-45")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void byPassenger_returns200_withThatPassengersTrips() throws Exception {
+        when(service.findByPassenger(1L)).thenReturn(List.of(response()));
+
+        mockMvc.perform(get("/api/trips/passenger/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].passenger.id").value(1));
+    }
+
+    @Test
+    void byPassenger_returns404_whenThePassengerDoesNotExist() throws Exception {
+        when(service.findByPassenger(999L)).thenThrow(new ResourceNotFoundException("Passenger not found: id 999"));
+
+        mockMvc.perform(get("/api/trips/passenger/999"))
+                .andExpect(status().isNotFound());
+    }
+
+    private TripResponse response() {
+        return new TripResponse(
+                1L,
+                LocalDate.of(2026, 12, 20),
+                LocalDate.of(2026, 12, 30),
+                new BigDecimal("3500.50"),
+                "CONFIRMED",
+                new PassengerResponse(1L, "Ana Souza", "AB123456", "ana@email.com", LocalDate.of(1998, 5, 20)),
+                new DestinationResponse(1L, "Lisbon", "Portugal", "Portuguese capital"));
+    }
+}
