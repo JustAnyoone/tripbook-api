@@ -1,0 +1,30 @@
+name: CI
+
+# Runs the full test suite on every push and pull request.
+on:
+  push:
+    branches: [main, portfolio]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Files committed from Windows may lose the executable bit
+      - name: Make the Maven wrapper executable
+        run: chmod +x mvnw
+
+      # Tests use in-memory H2 (src/test/resources/application.properties),
+      # so no MySQL service is needed here.
+      - name: Build and run tests
+        run: ./mvnw -B verify
