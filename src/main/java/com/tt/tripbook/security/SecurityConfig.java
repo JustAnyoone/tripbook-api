@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +34,10 @@ public class SecurityConfig {
     private static final int MIN_SECRET_BYTES = 32;
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource cors) throws Exception {
+    // The qualifier is needed because Spring MVC's HandlerMappingIntrospector is also a CorsConfigurationSource
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                            @Qualifier("corsConfigurationSource") CorsConfigurationSource cors)
+            throws Exception {
         JsonAuthErrorHandler errors = new JsonAuthErrorHandler();
         http
                 .csrf(AbstractHttpConfigurer::disable)
