@@ -32,7 +32,7 @@ class JwtServiceTest {
         Jwt jwt = decoder(SECRET).decode(service.generateToken("ana@email.com"));
 
         assertThat(jwt.getSubject()).isEqualTo("ana@email.com");
-        assertThat(jwt.getIssuer().toString()).isEqualTo(JwtService.ISSUER);
+        assertThat(jwt.getClaimAsString("iss")).isEqualTo(JwtService.ISSUER);
         assertThat(jwt.getExpiresAt()).isBetween(
                 before.plus(Duration.ofMinutes(30)).minusSeconds(5),
                 Instant.now().plus(Duration.ofMinutes(30)).plusSeconds(5));
