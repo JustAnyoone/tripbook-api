@@ -1,0 +1,40 @@
+# One command starts everything:  docker compose up --build
+#   front-end  http://localhost:3000
+#   API        http://localhost:8080  (Swagger UI at /swagger-ui/index.html)
+# Passwords and the token key come from a .env file (copy .env.example) or the shell.
+# The defaults below are for local use only.
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: tripbook
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/tripbook?createDatabaseIfNotExist=true
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-before-deploying-0123456789}
+    ports:
+      - "8080:8080"
+
+  web:
+    build: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+volumes:
+  db-data:
