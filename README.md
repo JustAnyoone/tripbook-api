@@ -7,7 +7,7 @@
 
 REST API for managing trip bookings: passengers, destinations and the trips that connect them. Built with Spring Boot, Spring Data JPA and MySQL.
 
-The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests and continuous integration are already in place, and a React front-end and authentication are next.
+The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests and continuous integration are already in place, and a React front-end is included, and authentication is next.
 
 ## Features
 
@@ -18,7 +18,8 @@ The project started as a university assignment (Object-Oriented Programming, CEU
 - Pagination, sorting and filtering on every list endpoint
 - Input validation with clear error messages and a single, consistent error format
 - Interactive API documentation with Swagger UI
-- 112 automated tests (unit, web layer, repository and end-to-end) running on every push through GitHub Actions
+- React + TypeScript front-end with paginated, filterable and sortable tables and forms for every resource
+- Automated tests on both sides (back-end: unit, web layer, repository and end-to-end; front-end: components and API client) running on every push through GitHub Actions
 
 ## Tech stack
 
@@ -27,7 +28,9 @@ The project started as a university assignment (Object-Oriented Programming, CEU
 - Hibernate / JPA, MySQL 8
 - springdoc-openapi (Swagger UI)
 - JUnit 5, Mockito, AssertJ, MockMvc, H2 (tests only)
-- Maven, GitHub Actions
+- React 19, TypeScript, Vite, React Router
+- Vitest and Testing Library
+- Maven, npm, GitHub Actions
 
 ## Architecture
 
@@ -114,7 +117,26 @@ spring.jpa.hibernate.ddl-auto=update
 
 # Pagination: never return more than 100 items per page
 spring.data.web.pageable.max-page-size=100
+
+# Origins allowed to call the API from a browser (default: the Vite dev server)
+app.cors.allowed-origins=http://localhost:5173
 ```
+
+### Run the front-end
+
+The front-end lives in `frontend/` and needs Node.js 22 or later. With the API running on port 8080:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. In development Vite forwards `/api` to `http://localhost:8080`, so nothing else needs configuring.
+
+To serve the front-end from another origin, set `VITE_API_URL` when building it, and list that origin in `app.cors.allowed-origins` (comma separated) on the API. The default is `http://localhost:5173`.
+
+Other scripts: `npm test` runs the tests and `npm run build` type-checks and builds the production bundle.
 
 ## API documentation
 
@@ -229,6 +251,8 @@ Every error uses the same format:
 
 ## Testing
 
+### Back-end
+
 ```bash
 ./mvnw test
 ```
@@ -242,7 +266,16 @@ The tests do not need MySQL: they run against an in-memory H2 database (`src/tes
 | Repositories           | `@SpringBootTest` + `@Transactional` on H2: derived queries, cascade, orphan removal, constraints |
 | End to end             | MockMvc against the full context: controller, service, repository and database |
 
-GitHub Actions runs the whole suite on every push and pull request (`.github/workflows/ci.yml`).
+### Front-end
+
+```bash
+cd frontend
+npm test
+```
+
+Vitest and Testing Library cover the API client (error mapping, query building), the date helpers, the pagination component and the destinations page end to end against a mocked `fetch`: listing, filtering, sorting, creating, and the message shown when the API refuses a delete.
+
+GitHub Actions runs both suites, and builds the front-end, on every push and pull request (`.github/workflows/ci.yml`).
 
 ## Project structure
 
@@ -259,6 +292,10 @@ src/main/resources
   application.properties
 src/test/java/com/tt/tripbook
   controller/ service/ repository/ integration/
+frontend/
+  src/api/          typed API client
+  src/components/   ListPage, Dialog, Pagination, forms
+  src/pages/        TripsPage, PassengersPage, DestinationsPage
 ```
 
 ## Roadmap
@@ -266,7 +303,7 @@ src/test/java/com/tt/tripbook
 - [x] DTOs for input and output
 - [x] Automated tests and continuous integration
 - [x] Pagination, sorting and filtering
-- [ ] React front-end
+- [x] React front-end
 - [ ] Authentication and authorization (Spring Security with JWT)
 - [ ] Docker setup and deployment
 - [ ] `enum` for the trip status
