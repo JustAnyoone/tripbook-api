@@ -65,6 +65,13 @@ public class GlobalExceptionHandler {
                         .body(new ApiError(400, "Invalid sort property: '" + ex.getPropertyName() + "'"));
         }
 
+        // Wrong email or password on login
+        @ExceptionHandler(InvalidCredentialsException.class)
+        public ResponseEntity<ApiError> invalidCredentials(InvalidCredentialsException ex) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiError(401, ex.getMessage()));
+        }
+
         @ExceptionHandler(BusinessRuleException.class)
         public ResponseEntity<ApiError> BusinessRule(BusinessRuleException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
