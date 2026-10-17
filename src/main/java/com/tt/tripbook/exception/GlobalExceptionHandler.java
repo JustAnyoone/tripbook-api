@@ -15,14 +15,14 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-        // Corpo ilegível: JSON malformado ou valor inválido (ex.: data "2026-13-45")
+        // Unreadable body: malformed JSON or an invalid value (e.g. the date "2026-13-45")
         @ExceptionHandler(HttpMessageNotReadableException.class)
         public ResponseEntity<ApiError> unreadableBody(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiError(400, "Malformed JSON or invalid value in the request body (dates must be real calendar dates in yyyy-MM-dd format)"));
         }
 
-        // Parâmetro de rota ou de query com tipo errado (ex.: /api/trips/abc)
+        // Route or query parameter of the wrong type (e.g. /api/trips/abc)
         @ExceptionHandler(MethodArgumentTypeMismatchException.class)
         public ResponseEntity<ApiError> wrongParameterType(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
                         .body(new ApiError(409, ex.getMessage()));
         }
 
-        // Dados de entrada inválidos (@Valid): junta as mensagens de todos os campos
+        // Invalid input (@Valid): joins the messages of every failing field
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<ApiError> validation(MethodArgumentNotValidException ex) {
                 String message = ex.getBindingResult().getFieldErrors().stream()
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
                         .body(new ApiError(400, message));
         }
 
-        // Rede de segurança: violação de chave estrangeira ou de campo único que ninguém tratou antes
+        // Safety net: a foreign key or unique constraint violation that nothing handled earlier
         @ExceptionHandler(DataIntegrityViolationException.class)
         public ResponseEntity<ApiError> integrity(DataIntegrityViolationException ex) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
