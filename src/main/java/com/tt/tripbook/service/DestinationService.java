@@ -2,15 +2,16 @@ package com.tt.tripbook.service;
 
 import com.tt.tripbook.dto.DestinationRequest;
 import com.tt.tripbook.dto.DestinationResponse;
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.repository.DestinationRepository;
 import com.tt.tripbook.repository.TripRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class DestinationService {
@@ -23,9 +24,13 @@ public class DestinationService {
         this.tripRepository = tripRepository;
     }
 
+    // Optional country filter; a null or blank value means "no filter"
     @Transactional(readOnly = true)
-    public List<DestinationResponse> findAll() {
-        return repository.findAll().stream().map(DestinationResponse::from).toList();
+    public PageResponse<DestinationResponse> findAll(String country, Pageable pageable) {
+        Page<Destination> page = (country == null || country.isBlank())
+                ? repository.findAll(pageable)
+                : repository.findByCountryContainingIgnoreCase(country.trim(), pageable);
+        return PageResponse.from(page.map(DestinationResponse::from));
     }
 
     @Transactional(readOnly = true)

@@ -111,8 +111,68 @@ class TripApiIntegrationTest {
 
         mockMvc.perform(get("/api/trips/passenger/" + ana.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].passenger.id").value(ana.getId().intValue()));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].passenger.id").value(ana.getId().intValue()))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void getTrips_filtersByStatus_andShowsTheNewestDepartureFirst() throws Exception {
+        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        Trip early = trip(ana, lisbon);
+        Trip late = trip(ana, lisbon);
+        late.setDepartureDate(java.time.LocalDate.of(2027, 1, 10));
+        late.setReturnDate(java.time.LocalDate.of(2027, 1, 20));
+        Trip cancelled = trip(ana, lisbon);
+        cancelled.setStatus("CANCELLED");
+        tripRepository.save(early);
+        tripRepository.save(late);
+        tripRepository.save(cancelled);
+
+        // Lower case is accepted; both CONFIRMED trips come back, latest departure first
+        mockMvc.perform(get("/api/trips").param("status", "confirmed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[0].departureDate").value("2027-01-10"))
+                .andExpect(jsonPath("$.content[1].departureDate").value("2026-12-20"));
+    }
+
+    @Test
+    void getTrips_returns400_whenTheStatusFilterIsUnknown() throws Exception {
+        mockMvc.perform(get("/api/trips").param("status", "XYZ"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("status must be PENDING, CONFIRMED or CANCELLED"));
+    }
+
+    @Test
+    void getTrips_returnsTheRequestedPage() throws Exception {
+        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        for (int i = 0; i < 3; i++) {
+            tripRepository.save(trip(ana, lisbon));
+        }
+
+        mockMvc.perform(get("/api/trips").param("page", "1").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
+    void getTripsByDestination_returnsOnlyTripsToThatDestination() throws Exception {
+        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        Destination tokyo = destinationRepository.save(destination("Tokyo", "Japan"));
+        tripRepository.save(trip(ana, lisbon));
+        tripRepository.save(trip(ana, tokyo));
+
+        mockMvc.perform(get("/api/trips/destination/" + tokyo.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].destination.city").value("Tokyo"));
     }
 
     @Test

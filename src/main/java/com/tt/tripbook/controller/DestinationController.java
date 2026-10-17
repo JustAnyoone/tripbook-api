@@ -2,16 +2,18 @@ package com.tt.tripbook.controller;
 
 import com.tt.tripbook.dto.DestinationRequest;
 import com.tt.tripbook.dto.DestinationResponse;
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.service.DestinationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/destinations")
@@ -24,10 +26,15 @@ public class DestinationController {
         this.service = service;
     }
 
-    @Operation(summary = "List all destinations")
+    @Operation(summary = "List destinations, paginated",
+            description = "Optional filter by country (case-insensitive, partial match). "
+                    + "Use page, size and sort (e.g. sort=city,desc) to control the result.")
+    @ApiResponse(responseCode = "400", description = "Invalid sort property or parameter value")
     @GetMapping
-    public List<DestinationResponse> findAll() {
-        return service.findAll();
+    public PageResponse<DestinationResponse> findAll(
+            @RequestParam(required = false) String country,
+            @ParameterObject @PageableDefault(size = 10, sort = "city") Pageable pageable) {
+        return service.findAll(country, pageable);
     }
 
     @Operation(summary = "Find a destination by id")

@@ -11,11 +11,14 @@ import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.util.List;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
@@ -42,9 +45,9 @@ class TripRepositoryTest {
         Trip anasTrip = tripRepository.save(trip(ana, lisbon));
         tripRepository.save(trip(john, lisbon));
 
-        List<Trip> result = tripRepository.findByPassengerId(ana.getId());
+        Page<Trip> result = tripRepository.findByPassengerId(ana.getId(), PageRequest.of(0, 10));
 
-        assertThat(result).extracting(Trip::getId).containsExactly(anasTrip.getId());
+        assertThat(result.getContent()).extracting(Trip::getId).containsExactly(anasTrip.getId());
     }
 
     @Test
@@ -55,9 +58,47 @@ class TripRepositoryTest {
         tripRepository.save(trip(ana, lisbon));
         Trip toTokyo = tripRepository.save(trip(ana, tokyo));
 
-        List<Trip> result = tripRepository.findByDestinationId(tokyo.getId());
+        Page<Trip> result = tripRepository.findByDestinationId(tokyo.getId(), PageRequest.of(0, 10));
 
-        assertThat(result).extracting(Trip::getId).containsExactly(toTokyo.getId());
+        assertThat(result.getContent()).extracting(Trip::getId).containsExactly(toTokyo.getId());
+    }
+
+    @Test
+    void findByStatus_returnsOnlyThatStatus_sortedAndPaged() {
+        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        Trip pending = trip(ana, lisbon);
+        pending.setStatus("PENDING");
+        tripRepository.save(pending);
+        Trip early = tripRepository.save(trip(ana, lisbon));
+        Trip late = trip(ana, lisbon);
+        late.setDepartureDate(LocalDate.of(2027, 1, 10));
+        late.setReturnDate(LocalDate.of(2027, 1, 20));
+        late = tripRepository.save(late);
+
+        Page<Trip> result = tripRepository.findByStatus(
+                "CONFIRMED", PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "departureDate")));
+
+        assertThat(result.getContent()).extracting(Trip::getId).containsExactly(late.getId(), early.getId());
+        assertThat(result.getTotalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void findAll_returnsTheRequestedPage_withPassengerAndDestinationLoaded() {
+        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        for (int i = 0; i < 3; i++) {
+            tripRepository.save(trip(ana, lisbon));
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        Page<Trip> secondPage = tripRepository.findAll(PageRequest.of(1, 2));
+
+        assertThat(secondPage.getContent()).hasSize(1);
+        assertThat(secondPage.getTotalElements()).isEqualTo(3);
+        assertThat(secondPage.getTotalPages()).isEqualTo(2);
+        assertThat(secondPage.getContent().get(0).getPassenger().getName()).isEqualTo("Ana Souza");
     }
 
     @Test

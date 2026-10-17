@@ -3,6 +3,7 @@ package com.tt.tripbook.exception;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -55,6 +56,13 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiError> integrity(DataIntegrityViolationException ex) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(new ApiError(409, "Operation refused: the record is in use or violates a data constraint."));
+        }
+
+        // Unknown property in ?sort=... (e.g. sort=banana): a client error, not a server error
+        @ExceptionHandler(PropertyReferenceException.class)
+        public ResponseEntity<ApiError> invalidSortProperty(PropertyReferenceException ex) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiError(400, "Invalid sort property: '" + ex.getPropertyName() + "'"));
         }
 
         @ExceptionHandler(BusinessRuleException.class)

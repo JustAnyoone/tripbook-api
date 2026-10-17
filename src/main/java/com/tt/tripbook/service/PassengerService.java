@@ -1,15 +1,16 @@
 package com.tt.tripbook.service;
 
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.PassengerRequest;
 import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.repository.PassengerRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class PassengerService {
@@ -20,9 +21,13 @@ public class PassengerService {
         this.repository = repository;
     }
 
+    // Optional name filter; a null or blank value means "no filter"
     @Transactional(readOnly = true)
-    public List<PassengerResponse> findAll() {
-        return repository.findAll().stream().map(PassengerResponse::from).toList();
+    public PageResponse<PassengerResponse> findAll(String name, Pageable pageable) {
+        Page<Passenger> page = (name == null || name.isBlank())
+                ? repository.findAll(pageable)
+                : repository.findByNameContainingIgnoreCase(name.trim(), pageable);
+        return PageResponse.from(page.map(PassengerResponse::from));
     }
 
     @Transactional(readOnly = true)

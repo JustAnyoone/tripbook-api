@@ -1,6 +1,10 @@
 package com.tt.tripbook.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,6 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.PassengerRequest;
 import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.exception.ConflictException;
@@ -16,12 +21,17 @@ import com.tt.tripbook.exception.GlobalExceptionHandler;
 import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.service.PassengerService;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -50,9 +60,56 @@ class PassengerControllerTest {
 
     @BeforeEach
     void setUp() {
+        // The Pageable resolver is registered by hand: standalone MockMvc has no Spring Boot auto-configuration
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+    }
+
+    @Test
+    void findAll_returns200_withThePageEnvelope() throws Exception {
+        when(service.findAll(isNull(), any(Pageable.class)))
+                .thenReturn(new PageResponse<>(List.of(response()), 0, 10, 1, 1, true));
+
+        mockMvc.perform(get("/api/passengers"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name").value("Ana Souza"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void findAll_passesTheFilterAndThePagingParametersToTheService() throws Exception {
+        when(service.findAll(eq("ana"), any(Pageable.class)))
+                .thenReturn(new PageResponse<>(List.of(), 1, 5, 0, 0, true));
+
+        mockMvc.perform(get("/api/passengers")
+                        .param("name", "ana")
+                        .param("page", "1")
+                        .param("size", "5")
+                        .param("sort", "email,desc"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(service).findAll(eq("ana"), captor.capture());
+        assertThat(captor.getValue().getPageNumber()).isEqualTo(1);
+        assertThat(captor.getValue().getPageSize()).isEqualTo(5);
+        assertThat(captor.getValue().getSort().getOrderFor("email").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void findAll_sortsByNameAscending_whenNoSortIsSent() throws Exception {
+        when(service.findAll(isNull(), any(Pageable.class)))
+                .thenReturn(new PageResponse<>(List.of(), 0, 10, 0, 0, true));
+
+        mockMvc.perform(get("/api/passengers")).andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(service).findAll(isNull(), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(10);
+        assertThat(captor.getValue().getSort().getOrderFor("name").getDirection())
+                .isEqualTo(Sort.Direction.ASC);
     }
 
     @Test
