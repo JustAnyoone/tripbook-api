@@ -277,4 +277,4 @@ Released under the MIT License. See [LICENSE](LICENSE).
 
 ## Author
 
-Porttilho, student at CEUB.
+Rhyan Gabriel Portilho Duarte, student at CEUB.
