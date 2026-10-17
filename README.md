@@ -7,7 +7,7 @@
 
 REST API for managing trip bookings: passengers, destinations and the trips that connect them. Built with Spring Boot, Spring Data JPA and MySQL.
 
-The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests and continuous integration are already in place, and a React front-end is included, and authentication is next.
+The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests, continuous integration, a React front-end and JWT authentication are already in place; Docker and deployment are next.
 
 ## Features
 
@@ -16,15 +16,16 @@ The project started as a university assignment (Object-Oriented Programming, CEU
 - Business rules: the return date cannot be before the departure date, and the passenger and destination must exist
 - A destination that still has trips cannot be deleted; deleting a passenger also deletes their trips
 - Pagination, sorting and filtering on every list endpoint
+- Accounts with sign-up and sign-in: passwords stored as BCrypt hashes, stateless JWT access tokens, every `/api` route protected except register and login
 - Input validation with clear error messages and a single, consistent error format
 - Interactive API documentation with Swagger UI
-- React + TypeScript front-end with paginated, filterable and sortable tables and forms for every resource
+- React + TypeScript front-end with sign-in and sign-up pages, paginated, filterable and sortable tables and forms for every resource
 - Automated tests on both sides (back-end: unit, web layer, repository and end-to-end; front-end: components and API client) running on every push through GitHub Actions
 
 ## Tech stack
 
 - Java 17
-- Spring Boot 4 (Web MVC, Data JPA, Validation)
+- Spring Boot 4 (Web MVC, Data JPA, Validation, Security with OAuth2 resource server for JWT)
 - Hibernate / JPA, MySQL 8
 - springdoc-openapi (Swagger UI)
 - JUnit 5, Mockito, AssertJ, MockMvc, H2 (tests only)
@@ -43,6 +44,8 @@ Layered structure under the `com.tt.tripbook` package:
 | `service`    | Business rules and transactions                                   |
 | `repository` | Data access with Spring Data JPA                                  |
 | `model`      | JPA entities and relationships                                    |
+| `security`   | Security filter chain, JWT encoder/decoder, JSON 401/403 responses |
+| `config`     | CORS rules                                                        |
 | `exception`  | Custom exceptions and the global error handler                    |
 
 ```
@@ -58,6 +61,7 @@ Client -> Controller -> Service -> Repository -> Hibernate/JPA -> MySQL
 | `Passenger`   | name, documentNumber (unique), email, birthDate              | One passenger has many trips                 |
 | `Destination` | city, country, description                                   | One destination is used by many trips        |
 | `Trip`        | departureDate, returnDate, price, status                     | Belongs to one passenger and one destination |
+| `AppUser`     | name, email (unique), passwordHash                           | Account used to sign in; unrelated to `Passenger` |
 
 Modeling notes:
 
@@ -104,6 +108,23 @@ setx DB_PASSWORD "your_password"
 On Windows PowerShell use `.\mvnw spring-boot:run`.
 
 The `tripbook` database and its tables are created automatically on the first run (`createDatabaseIfNotExist=true` and `ddl-auto=update`).
+
+4. Create an account and get a token (every route except these two needs one):
+
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ana Souza","email":"ana@email.com","password":"a-long-passphrase"}'
+```
+
+Send the returned `token` on each request as `Authorization: Bearer <token>`. In Swagger UI, use the Authorize button.
+
+### Authentication
+
+- `POST /api/auth/register` creates an account and signs it in (201), `POST /api/auth/login` returns a token (200, or 401 for a wrong email or password), `GET /api/auth/me` returns the signed-in user.
+- Tokens are signed with HS256 and last 60 minutes. Without a valid token the API answers `401` in the usual error format.
+- The signing key comes from the `JWT_SECRET` environment variable (at least 32 characters). A development default exists so the project runs out of the box; **always set your own `JWT_SECRET` anywhere the API is reachable by others.**
+- The front-end keeps the token in `localStorage` so a refresh does not sign the user out. The trade-off is that any script running on the page could read it, so the front-end never injects raw HTML. A common alternative is an HttpOnly cookie, which would also need CSRF protection.
 
 ### Configuration
 
@@ -153,6 +174,7 @@ It lists every endpoint with its request and response formats and lets you try t
 | Passengers   | `/api/passengers`  | GET (page), GET by id, POST, PUT, DELETE |
 | Destinations | `/api/destinations`| GET (page), GET by id, POST, PUT, DELETE |
 | Trips        | `/api/trips`       | GET (page), GET by id, POST, PUT, DELETE |
+| Auth         | `/api/auth`        | POST `/register`, POST `/login`, GET `/me` (public except `/me`) |
 
 Additional queries:
 
@@ -246,8 +268,9 @@ Every error uses the same format:
 | 201    | Record created                                                                           |
 | 204    | Record deleted                                                                           |
 | 400    | Invalid data, unknown status or sort property, or return date before departure date      |
+| 401    | Missing, invalid or expired token; wrong email or password on login                      |
 | 404    | Trip, passenger or destination not found                                                 |
-| 409    | Document number already registered, or deleting a destination that still has trips       |
+| 409    | Document number or email already registered, or deleting a destination that still has trips |
 
 ## Testing
 
@@ -265,6 +288,7 @@ The tests do not need MySQL: they run against an in-memory H2 database (`src/tes
 | Controllers            | Standalone MockMvc with the real `GlobalExceptionHandler`                   |
 | Repositories           | `@SpringBootTest` + `@Transactional` on H2: derived queries, cascade, orphan removal, constraints |
 | End to end             | MockMvc against the full context: controller, service, repository and database |
+| Security               | Real filter chain: no token, garbage token, tampered signature, expired token, register, login, `/me`, CORS preflight |
 
 ### Front-end
 
@@ -273,7 +297,7 @@ cd frontend
 npm test
 ```
 
-Vitest and Testing Library cover the API client (error mapping, query building), the date helpers, the pagination component and the destinations page end to end against a mocked `fetch`: listing, filtering, sorting, creating, and the message shown when the API refuses a delete.
+Vitest and Testing Library cover the API client (error mapping, query building, the Bearer header), the date helpers, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
 
 GitHub Actions runs both suites, and builds the front-end, on every push and pull request (`.github/workflows/ci.yml`).
 
@@ -286,8 +310,10 @@ src/main/java/com/tt/tripbook
   service/      DestinationService, PassengerService, TripService
   repository/   DestinationRepository, PassengerRepository, TripRepository
   model/        Destination, Passenger, Trip
+  security/     SecurityConfig, JsonAuthErrorHandler
+  config/       CorsConfig
   exception/    ApiError, ConflictException, ResourceNotFoundException,
-                BusinessRuleException, GlobalExceptionHandler
+                BusinessRuleException, InvalidCredentialsException, GlobalExceptionHandler
 src/main/resources
   application.properties
 src/test/java/com/tt/tripbook
@@ -295,7 +321,8 @@ src/test/java/com/tt/tripbook
 frontend/
   src/api/          typed API client
   src/components/   ListPage, Dialog, Pagination, forms
-  src/pages/        TripsPage, PassengersPage, DestinationsPage
+  src/auth/         AuthContext, RequireAuth, token storage
+  src/pages/        TripsPage, PassengersPage, DestinationsPage, AuthPage
 ```
 
 ## Roadmap
@@ -304,7 +331,8 @@ frontend/
 - [x] Automated tests and continuous integration
 - [x] Pagination, sorting and filtering
 - [x] React front-end
-- [ ] Authentication and authorization (Spring Security with JWT)
+- [x] Authentication (Spring Security with JWT)
+- [ ] Roles and per-user data
 - [ ] Docker setup and deployment
 - [ ] `enum` for the trip status
 

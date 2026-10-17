@@ -68,3 +68,26 @@ export interface ListParams {
   /** Query filters such as { country: "port" }. Blank values are dropped. */
   filter?: Record<string, string>;
 }
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface AuthResult {
+  token: string;
+  tokenType: string;
+  /** Seconds until the token expires */
+  expiresIn: number;
+  user: User;
+}
+
+export interface Credentials {
+  email: string;
+  password: string;
+}
+
+export interface Registration extends Credentials {
+  name: string;
+}
