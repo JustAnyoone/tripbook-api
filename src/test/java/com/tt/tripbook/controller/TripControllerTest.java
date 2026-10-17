@@ -165,6 +165,21 @@ class TripControllerTest {
     }
 
     @Test
+    void create_returns400_whenTheDateDoesNotExistInTheCalendar() throws Exception {
+        // 31 November, 30 February and 29 February of a non-leap year are all impossible dates
+        for (String impossible : new String[] {"2026-11-31", "2026-02-30", "2027-02-29"}) {
+            mockMvc.perform(post("/api/trips")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(VALID_TRIP.replace("2026-12-20", impossible)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(
+                            "Malformed JSON or invalid value in the request body (dates must be real calendar dates in yyyy-MM-dd format)"));
+        }
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void findAll_returns200_withThePageEnvelope() throws Exception {
         when(service.findAll(isNull(), any(Pageable.class))).thenReturn(pageOf(response()));
 
