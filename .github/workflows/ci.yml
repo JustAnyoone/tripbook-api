@@ -31,9 +31,13 @@ jobs:
           set -o pipefail
           ./mvnw -B verify 2>&1 | tee build.log
 
-      # Copies the Maven errors into the run's annotations, so they show on the summary page
-      - name: Show build errors
-        if: failure()
+      # Copies the Maven result into the run's annotations, so it shows on the summary page
+      - name: Show test summary and errors
+        if: always()
         run: |
-          MSG=$(grep -E "ERROR|FAIL" build.log | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
-          echo "::error title=Maven errors::${MSG}"
+          SUMMARY=$(grep -E "Tests run:.*Skipped" build.log | tail -1)
+          echo "::notice title=Test summary::${SUMMARY}"
+          if grep -qE "ERROR|FAIL" build.log; then
+            MSG=$(grep -E "ERROR|FAIL" build.log | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+            echo "::error title=Maven errors::${MSG}"
+          fi
