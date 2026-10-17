@@ -1,223 +1,280 @@
 # TripBook
 
-![CI](https://github.com/SEU_USUARIO/NOME_DO_REPO/actions/workflows/ci.yml/badge.svg?branch=portfolio)
+![CI](https://github.com/JustAnyoone/tripbook-api/actions/workflows/ci.yml/badge.svg?branch=portfolio)
+![Java](https://img.shields.io/badge/Java-17-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-brightgreen)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-API REST para gerenciamento de viagens, passageiros e destinos, desenvolvida com Spring Boot, Spring Data JPA e MySQL.
+REST API for managing trip bookings: passengers, destinations and the trips that connect them. Built with Spring Boot, Spring Data JPA and MySQL.
 
-Projeto acadêmico do curso de Programação Orientada a Objetos (CEUB).
+The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests and continuous integration are already in place, and a React front-end and authentication are next.
 
-## Funcionalidades
+## Features
 
-- CRUD completo de passageiros, destinos e viagens
-- Cada viagem liga um passageiro a um destino
-- Regras de negócio: a data de volta não pode ser anterior à data de ida, e o passageiro e o destino informados precisam existir
-- Validação dos dados de entrada, com mensagens de erro claras
-- Tratamento global de exceções, com respostas de erro em formato padronizado
-- Documentação interativa da API com Swagger UI
+- Full CRUD for passengers, destinations and trips
+- Each trip links one passenger to one destination
+- Business rules: the return date cannot be before the departure date, and the passenger and destination must exist
+- A destination that still has trips cannot be deleted; deleting a passenger also deletes their trips
+- Pagination, sorting and filtering on every list endpoint
+- Input validation with clear error messages and a single, consistent error format
+- Interactive API documentation with Swagger UI
+- 112 automated tests (unit, web layer, repository and end-to-end) running on every push through GitHub Actions
 
-## Tecnologias
+## Tech stack
 
 - Java 17
-- Spring Boot 4 (Web, Data JPA, Validation)
-- Hibernate / JPA
-- MySQL 8
+- Spring Boot 4 (Web MVC, Data JPA, Validation)
+- Hibernate / JPA, MySQL 8
 - springdoc-openapi (Swagger UI)
-- Maven
+- JUnit 5, Mockito, AssertJ, MockMvc, H2 (tests only)
+- Maven, GitHub Actions
 
-## Arquitetura
+## Architecture
 
-O projeto é organizado em camadas, dentro do pacote `com.tt.tripbook`:
+Layered structure under the `com.tt.tripbook` package:
 
-| Pacote       | Responsabilidade                                          |
-|--------------|-----------------------------------------------------------|
-| `controller` | Endpoints HTTP e documentação da API                      |
-| `service`    | Regras de negócio                                         |
-| `repository` | Acesso a dados com Spring Data JPA                        |
-| `model`      | Entidades JPA e relacionamentos                           |
-| `exception`  | Exceções personalizadas e tratamento global de erros      |
-
-Fluxo de uma requisição:
+| Package      | Responsibility                                                    |
+|--------------|-------------------------------------------------------------------|
+| `controller` | HTTP endpoints and API documentation                              |
+| `dto`        | Request and response records, so entities are never exposed       |
+| `service`    | Business rules and transactions                                   |
+| `repository` | Data access with Spring Data JPA                                  |
+| `model`      | JPA entities and relationships                                    |
+| `exception`  | Custom exceptions and the global error handler                    |
 
 ```
-Cliente -> Controller -> Service -> Repository -> Hibernate/JPA -> MySQL
+Client -> Controller -> Service -> Repository -> Hibernate/JPA -> MySQL
+              |
+             DTOs (validated on the way in, mapped on the way out)
 ```
 
-## Modelo de dados
+## Data model
 
-| Entidade     | Atributos principais                                   | Relacionamentos                                  |
-|--------------|--------------------------------------------------------|--------------------------------------------------|
-| `Passageiro` | nome, cpf (único), email, dataNascimento               | Um passageiro possui várias viagens              |
-| `Destino`    | cidade, pais, descricao                                | Um destino é usado em várias viagens             |
-| `Viagem`     | dataIda, dataVolta, valor, status                      | Pertence a um passageiro e a um destino          |
+| Entity        | Main attributes                                              | Relationships                                |
+|---------------|--------------------------------------------------------------|----------------------------------------------|
+| `Passenger`   | name, documentNumber (unique), email, birthDate              | One passenger has many trips                 |
+| `Destination` | city, country, description                                   | One destination is used by many trips        |
+| `Trip`        | departureDate, returnDate, price, status                     | Belongs to one passenger and one destination |
 
-Detalhes de modelagem:
+Modeling notes:
 
-- A `Viagem` guarda as chaves estrangeiras `passageiro_id` e `destino_id` (`@ManyToOne` + `@JoinColumn`).
-- Remover um passageiro remove também as viagens dele (`cascade` e `orphanRemoval`), pois a viagem não existe sem o passageiro.
-- Um destino que possui viagens associadas não pode ser removido (erro 409).
-- O campo `status` aceita apenas `PENDENTE`, `CONFIRMADA` ou `CANCELADA`.
-- O valor da viagem usa `BigDecimal`, adequado para dinheiro.
+- `Trip` owns the foreign keys `passenger_id` and `destination_id` (`@ManyToOne` + `@JoinColumn`).
+- Removing a passenger removes their trips (`cascade` and `orphanRemoval`), because a trip cannot exist without its passenger.
+- A destination with trips cannot be removed (HTTP 409). The foreign key enforces the same rule at the database level.
+- `status` accepts only `PENDING`, `CONFIRMED` or `CANCELLED`.
+- `price` is a `BigDecimal`, which is the right type for money.
 
-## Como executar
+## Getting started
 
-### Pré-requisitos
+### Prerequisites
 
-- Java 17 ou superior
-- MySQL 8 em execução na porta 3306
+- Java 17 or later
+- MySQL 8 running on port 3306 (not needed to run the tests)
 
-### Passo a passo
+### Run the application
 
-1. Clone o repositório:
+1. Clone the repository:
 
 ```bash
 git clone https://github.com/JustAnyoone/tripbook-api.git
 cd tripbook-api
 ```
 
-2. Defina a senha do MySQL. A aplicação lê a variável de ambiente `DB_PASSWORD`; se ela não existir, usa `root` como valor padrão.
-
-```powershell
-# Windows (PowerShell)
-setx DB_PASSWORD "sua_senha"
-```
+2. Set the MySQL password. The application reads the `DB_PASSWORD` environment variable and falls back to `root` when it is not set.
 
 ```bash
 # Linux / macOS
-export DB_PASSWORD="sua_senha"
+export DB_PASSWORD="your_password"
 ```
 
-Depois de usar o `setx`, feche e abra o terminal (ou o VS Code) para a variável valer.
+```powershell
+# Windows (PowerShell); reopen the terminal afterwards
+setx DB_PASSWORD "your_password"
+```
 
-3. Execute a aplicação:
+3. Start the application:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-No Windows (PowerShell):
+On Windows PowerShell use `.\mvnw spring-boot:run`.
 
-```powershell
-.\mvnw spring-boot:run
-```
+The `tripbook` database and its tables are created automatically on the first run (`createDatabaseIfNotExist=true` and `ddl-auto=update`).
 
-O banco `tripbook` e as tabelas são criados automaticamente na primeira execução (`createDatabaseIfNotExist=true` e `ddl-auto=update`).
+### Configuration
 
-### Configuração
-
-As configurações ficam em `src/main/resources/application.properties`:
+Settings live in `src/main/resources/application.properties`:
 
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/tripbook?createDatabaseIfNotExist=true
 spring.datasource.username=root
 spring.datasource.password=${DB_PASSWORD:root}
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 spring.jpa.hibernate.ddl-auto=update
+
+# Pagination: never return more than 100 items per page
+spring.data.web.pageable.max-page-size=100
 ```
 
-Se o seu MySQL usa outro usuário ou porta, ajuste essas linhas.
+## API documentation
 
-## Documentação da API (Swagger)
-
-Com a aplicação em execução, acesse:
+With the application running, open Swagger UI:
 
 http://localhost:8080/swagger-ui/index.html
 
-Por lá é possível ver todos os endpoints, os formatos de entrada e saída e testar as requisições direto no navegador. A especificação em JSON está em `http://localhost:8080/v3/api-docs`.
+It lists every endpoint with its request and response formats and lets you try them in the browser. The OpenAPI document is at `http://localhost:8080/v3/api-docs`.
 
 ## Endpoints
 
-| Recurso      | Rota base          | Operações                                 |
-|--------------|--------------------|-------------------------------------------|
-| Passageiros  | `/api/passageiros` | GET, GET por id, POST, PUT, DELETE        |
-| Destinos     | `/api/destinos`    | GET, GET por id, POST, PUT, DELETE        |
-| Viagens      | `/api/viagens`     | GET, GET por id, POST, PUT, DELETE        |
+| Resource     | Base route         | Operations                          |
+|--------------|--------------------|-------------------------------------|
+| Passengers   | `/api/passengers`  | GET (page), GET by id, POST, PUT, DELETE |
+| Destinations | `/api/destinations`| GET (page), GET by id, POST, PUT, DELETE |
+| Trips        | `/api/trips`       | GET (page), GET by id, POST, PUT, DELETE |
 
-Consultas adicionais:
+Additional queries:
 
-| Rota                                | Descrição                          |
-|-------------------------------------|------------------------------------|
-| `GET /api/viagens/passageiro/{id}`  | Lista as viagens de um passageiro  |
-| `GET /api/viagens/destino/{id}`     | Lista as viagens para um destino   |
+| Route                                | Description                          |
+|--------------------------------------|--------------------------------------|
+| `GET /api/trips/passenger/{id}`      | Trips of one passenger (paginated)   |
+| `GET /api/trips/destination/{id}`    | Trips to one destination (paginated) |
 
-### Exemplos
+### Pagination, sorting and filtering
 
-Criar um destino (`POST /api/destinos`):
+Every list endpoint accepts `page` (starting at 0), `size` (default 10, maximum 100) and `sort` (for example `sort=city,desc`). Each one also has a filter:
+
+| Endpoint                | Filter                                                    | Default order                         |
+|-------------------------|-----------------------------------------------------------|---------------------------------------|
+| `GET /api/destinations` | `?country=` (partial match, case-insensitive)             | `city` ascending                      |
+| `GET /api/passengers`   | `?name=` (partial match, case-insensitive)                | `name` ascending                      |
+| `GET /api/trips`        | `?status=` (`PENDING`, `CONFIRMED` or `CANCELLED`)        | `departureDate`, newest first         |
+
+```
+GET /api/destinations?country=port&page=0&size=2&sort=city,desc
+```
 
 ```json
 {
-  "cidade": "Lisboa",
-  "pais": "Portugal",
-  "descricao": "Capital portuguesa"
+  "content": [
+    { "id": 2, "city": "Porto", "country": "Portugal", "description": null },
+    { "id": 1, "city": "Lisbon", "country": "Portugal", "description": "Portuguese capital" }
+  ],
+  "page": 0,
+  "size": 2,
+  "totalElements": 2,
+  "totalPages": 1,
+  "last": true
 }
 ```
 
-Criar um passageiro (`POST /api/passageiros`):
+An unknown `sort` property or an unknown trip `status` returns `400`.
+
+### Examples
+
+Create a destination (`POST /api/destinations`):
 
 ```json
 {
-  "nome": "Ana Souza",
-  "cpf": "12345678901",
+  "city": "Lisbon",
+  "country": "Portugal",
+  "description": "Portuguese capital"
+}
+```
+
+Create a passenger (`POST /api/passengers`):
+
+```json
+{
+  "name": "Ana Souza",
+  "documentNumber": "AB123456",
   "email": "ana@email.com",
-  "dataNascimento": "1998-05-20"
+  "birthDate": "1998-05-20"
 }
 ```
 
-Criar uma viagem (`POST /api/viagens`). Informe apenas o `id` do passageiro e do destino:
+Create a trip (`POST /api/trips`). Send only the ids of the passenger and the destination:
 
 ```json
 {
-  "dataIda": "2026-12-20",
-  "dataVolta": "2026-12-30",
-  "valor": 3500.50,
-  "status": "CONFIRMADA",
-  "passageiro": { "id": 1 },
-  "destino": { "id": 1 }
+  "departureDate": "2026-12-20",
+  "returnDate": "2026-12-30",
+  "price": 3500.50,
+  "status": "CONFIRMED",
+  "passengerId": 1,
+  "destinationId": 1
 }
 ```
 
-## Tratamento de erros
+The response embeds the full passenger and destination.
 
-Todos os erros seguem o mesmo formato:
+## Error handling
+
+Every error uses the same format:
 
 ```json
 {
   "status": 404,
-  "mensagem": "Destino não encontrado: id 999",
+  "message": "Destination not found: id 999",
   "timestamp": "2026-10-09T21:00:00"
 }
 ```
 
-| Status | Quando acontece                                                                |
-|--------|--------------------------------------------------------------------------------|
-| 201    | Registro criado                                                                |
-| 204    | Registro removido                                                              |
-| 400    | Dados inválidos, status inexistente ou data de volta anterior à data de ida    |
-| 404    | Registro, passageiro ou destino não encontrado                                 |
-| 409    | CPF já cadastrado, ou tentativa de remover um destino que possui viagens       |
+| Status | When it happens                                                                          |
+|--------|------------------------------------------------------------------------------------------|
+| 201    | Record created                                                                           |
+| 204    | Record deleted                                                                           |
+| 400    | Invalid data, unknown status or sort property, or return date before departure date      |
+| 404    | Trip, passenger or destination not found                                                 |
+| 409    | Document number already registered, or deleting a destination that still has trips       |
 
-## Estrutura do projeto
+## Testing
+
+```bash
+./mvnw test
+```
+
+The tests do not need MySQL: they run against an in-memory H2 database (`src/test/resources/application.properties` replaces the main configuration while tests run).
+
+| Layer                  | Approach                                                                    |
+|------------------------|-----------------------------------------------------------------------------|
+| Services               | Mockito unit tests, no Spring context                                       |
+| Controllers            | Standalone MockMvc with the real `GlobalExceptionHandler`                   |
+| Repositories           | `@SpringBootTest` + `@Transactional` on H2: derived queries, cascade, orphan removal, constraints |
+| End to end             | MockMvc against the full context: controller, service, repository and database |
+
+GitHub Actions runs the whole suite on every push and pull request (`.github/workflows/ci.yml`).
+
+## Project structure
 
 ```
 src/main/java/com/tt/tripbook
-  controller/   DestinoController, PassageiroController, ViagemController
-  service/      DestinoService, PassageiroService, ViagemService
-  repository/   DestinoRepository, PassageiroRepository, ViagemRepository
-  model/        Destino, Passageiro, Viagem
-  exception/    ApiError, ConflitoException, RecursoNaoEncontradoException,
-                RegraDeNegocioException, GlobalExceptionHandler
+  controller/   DestinationController, PassengerController, TripController
+  dto/          *Request, *Response records and PageResponse
+  service/      DestinationService, PassengerService, TripService
+  repository/   DestinationRepository, PassengerRepository, TripRepository
+  model/        Destination, Passenger, Trip
+  exception/    ApiError, ConflictException, ResourceNotFoundException,
+                BusinessRuleException, GlobalExceptionHandler
 src/main/resources
   application.properties
+src/test/java/com/tt/tripbook
+  controller/ service/ repository/ integration/
 ```
 
-## Possíveis melhorias
+## Roadmap
 
-- DTOs de entrada e saída, para não expor as entidades diretamente
-- Paginação e filtros nas listagens
-- `enum` para o status da viagem
-- Testes automatizados (JUnit e Mockito)
-- Autenticação e autorização
+- [x] DTOs for input and output
+- [x] Automated tests and continuous integration
+- [x] Pagination, sorting and filtering
+- [ ] React front-end
+- [ ] Authentication and authorization (Spring Security with JWT)
+- [ ] Docker setup and deployment
+- [ ] `enum` for the trip status
 
-## Autor
+## License
 
-Porttilho, estudante do CEUB.
+Released under the MIT License. See [LICENSE](LICENSE).
+
+## Author
+
+Rhyan Gabriel Portilho Duarte, student at CEUB.
