@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 // Runs against the in-memory H2 database from src/test/resources/application.properties.
@@ -49,6 +52,20 @@ class PassengerRepositoryTest {
 
         assertThat(passengerRepository.existsByDocumentNumberAndIdNot("AB123456", ana.getId())).isFalse();
         assertThat(passengerRepository.existsByDocumentNumberAndIdNot("AB123456", ana.getId() + 1)).isTrue();
+    }
+
+    @Test
+    void findByNameContainingIgnoreCase_matchesPartialTextIgnoringCase_andPages() {
+        passengerRepository.save(passenger("AB123456", "Ana Souza"));
+        passengerRepository.save(passenger("CD789012", "Mariana Lima"));
+        passengerRepository.save(passenger("EF345678", "John Smith"));
+
+        Page<Passenger> firstPage = passengerRepository.findByNameContainingIgnoreCase(
+                "ANA", PageRequest.of(0, 1, Sort.by("name")));
+
+        assertThat(firstPage.getContent()).extracting(Passenger::getName).containsExactly("Ana Souza");
+        assertThat(firstPage.getTotalElements()).isEqualTo(2);
+        assertThat(firstPage.isLast()).isFalse();
     }
 
     @Test

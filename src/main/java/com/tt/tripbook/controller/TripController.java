@@ -1,5 +1,6 @@
 package com.tt.tripbook.controller;
 
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.TripRequest;
 import com.tt.tripbook.dto.TripResponse;
 import com.tt.tripbook.service.TripService;
@@ -7,11 +8,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/trips")
@@ -24,10 +27,16 @@ public class TripController {
         this.service = service;
     }
 
-    @Operation(summary = "List all trips")
+    @Operation(summary = "List trips, paginated",
+            description = "Optional filter by status (PENDING, CONFIRMED or CANCELLED, case-insensitive). "
+                    + "Newest departure first by default; use page, size and sort to change it.")
+    @ApiResponse(responseCode = "400", description = "Unknown status, invalid sort property or parameter value")
     @GetMapping
-    public List<TripResponse> findAll() {
-        return service.findAll();
+    public PageResponse<TripResponse> findAll(
+            @RequestParam(required = false) String status,
+            @ParameterObject @PageableDefault(size = 10, sort = "departureDate", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return service.findAll(status, pageable);
     }
 
     @Operation(summary = "Find a trip by id")
@@ -38,18 +47,24 @@ public class TripController {
         return service.findById(id);
     }
 
-    @Operation(summary = "List the trips of a passenger")
+    @Operation(summary = "List the trips of a passenger, paginated")
     @ApiResponse(responseCode = "404", description = "Passenger not found")
     @GetMapping("/passenger/{passengerId}")
-    public List<TripResponse> byPassenger(@PathVariable Long passengerId) {
-        return service.findByPassenger(passengerId);
+    public PageResponse<TripResponse> byPassenger(
+            @PathVariable Long passengerId,
+            @ParameterObject @PageableDefault(size = 10, sort = "departureDate", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return service.findByPassenger(passengerId, pageable);
     }
 
-    @Operation(summary = "List the trips to a destination")
+    @Operation(summary = "List the trips to a destination, paginated")
     @ApiResponse(responseCode = "404", description = "Destination not found")
     @GetMapping("/destination/{destinationId}")
-    public List<TripResponse> byDestination(@PathVariable Long destinationId) {
-        return service.findByDestination(destinationId);
+    public PageResponse<TripResponse> byDestination(
+            @PathVariable Long destinationId,
+            @ParameterObject @PageableDefault(size = 10, sort = "departureDate", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return service.findByDestination(destinationId, pageable);
     }
 
     @Operation(summary = "Create a trip", description = "Send only the ids of the passenger and the destination")

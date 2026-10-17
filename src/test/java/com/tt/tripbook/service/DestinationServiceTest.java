@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.tt.tripbook.dto.DestinationRequest;
 import com.tt.tripbook.dto.DestinationResponse;
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.Destination;
@@ -23,6 +24,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 // Pure unit test: no Spring context and no database. The repositories are Mockito mocks.
 @ExtendWith(MockitoExtension.class)
@@ -38,14 +42,42 @@ class DestinationServiceTest {
     private DestinationService service;
 
     @Test
-    void findAll_returnsEveryDestinationAsResponse() {
-        when(repository.findAll()).thenReturn(List.of(
+    void findAll_withoutCountry_returnsThePageOfEveryDestination() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(repository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(
                 destination(1L, "Lisbon", "Portugal"),
-                destination(2L, "Tokyo", "Japan")));
+                destination(2L, "Tokyo", "Japan")), pageable, 2));
 
-        List<DestinationResponse> result = service.findAll();
+        PageResponse<DestinationResponse> result = service.findAll(null, pageable);
 
-        assertThat(result).extracting(DestinationResponse::city).containsExactly("Lisbon", "Tokyo");
+        assertThat(result.content()).extracting(DestinationResponse::city).containsExactly("Lisbon", "Tokyo");
+        assertThat(result.totalElements()).isEqualTo(2);
+        verify(repository, never()).findByCountryContainingIgnoreCase(any(), any());
+    }
+
+    @Test
+    void findAll_withBlankCountry_ignoresTheFilter() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(repository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        service.findAll("   ", pageable);
+
+        verify(repository).findAll(pageable);
+        verify(repository, never()).findByCountryContainingIgnoreCase(any(), any());
+    }
+
+    @Test
+    void findAll_withCountry_filtersByTheTrimmedCountry() {
+        Pageable pageable = PageRequest.of(1, 5);
+        when(repository.findByCountryContainingIgnoreCase("Portugal", pageable))
+                .thenReturn(new PageImpl<>(List.of(destination(1L, "Lisbon", "Portugal")), pageable, 6));
+
+        PageResponse<DestinationResponse> result = service.findAll("  Portugal ", pageable);
+
+        assertThat(result.content()).extracting(DestinationResponse::city).containsExactly("Lisbon");
+        assertThat(result.page()).isEqualTo(1);
+        assertThat(result.size()).isEqualTo(5);
+        verify(repository, never()).findAll(any(Pageable.class));
     }
 
     @Test

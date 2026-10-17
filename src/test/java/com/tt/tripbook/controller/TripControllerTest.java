@@ -1,6 +1,10 @@
 package com.tt.tripbook.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.tt.tripbook.dto.DestinationResponse;
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.dto.TripRequest;
 import com.tt.tripbook.dto.TripResponse;
@@ -22,9 +27,13 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -54,7 +63,9 @@ class TripControllerTest {
 
     @BeforeEach
     void setUp() {
+        // The Pageable resolver is registered by hand: standalone MockMvc has no Spring Boot auto-configuration
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -154,20 +165,84 @@ class TripControllerTest {
     }
 
     @Test
+    void findAll_returns200_withThePageEnvelope() throws Exception {
+        when(service.findAll(isNull(), any(Pageable.class))).thenReturn(pageOf(response()));
+
+        mockMvc.perform(get("/api/trips"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
+    void findAll_showsTheNewestDepartureFirst_whenNoSortIsSent() throws Exception {
+        when(service.findAll(isNull(), any(Pageable.class))).thenReturn(pageOf());
+
+        mockMvc.perform(get("/api/trips")).andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(service).findAll(isNull(), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(10);
+        assertThat(captor.getValue().getSort().getOrderFor("departureDate").getDirection())
+                .isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void findAll_passesTheStatusAndThePagingParametersToTheService() throws Exception {
+        when(service.findAll(eq("CONFIRMED"), any(Pageable.class))).thenReturn(pageOf());
+
+        mockMvc.perform(get("/api/trips")
+                        .param("status", "CONFIRMED")
+                        .param("page", "3")
+                        .param("size", "20"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(service).findAll(eq("CONFIRMED"), captor.capture());
+        assertThat(captor.getValue().getPageNumber()).isEqualTo(3);
+        assertThat(captor.getValue().getPageSize()).isEqualTo(20);
+    }
+
+    @Test
+    void findAll_returns400_whenTheServiceRejectsTheStatus() throws Exception {
+        when(service.findAll(eq("XYZ"), any(Pageable.class)))
+                .thenThrow(new BusinessRuleException("status must be PENDING, CONFIRMED or CANCELLED"));
+
+        mockMvc.perform(get("/api/trips").param("status", "XYZ"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("status must be PENDING, CONFIRMED or CANCELLED"));
+    }
+
+    @Test
     void byPassenger_returns200_withThatPassengersTrips() throws Exception {
-        when(service.findByPassenger(1L)).thenReturn(List.of(response()));
+        when(service.findByPassenger(eq(1L), any(Pageable.class))).thenReturn(pageOf(response()));
 
         mockMvc.perform(get("/api/trips/passenger/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].passenger.id").value(1));
+                .andExpect(jsonPath("$.content[0].passenger.id").value(1));
     }
 
     @Test
     void byPassenger_returns404_whenThePassengerDoesNotExist() throws Exception {
-        when(service.findByPassenger(999L)).thenThrow(new ResourceNotFoundException("Passenger not found: id 999"));
+        when(service.findByPassenger(eq(999L), any(Pageable.class)))
+                .thenThrow(new ResourceNotFoundException("Passenger not found: id 999"));
 
         mockMvc.perform(get("/api/trips/passenger/999"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void byDestination_returns200_withTheTripsToThatDestination() throws Exception {
+        when(service.findByDestination(eq(1L), any(Pageable.class))).thenReturn(pageOf(response()));
+
+        mockMvc.perform(get("/api/trips/destination/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].destination.city").value("Lisbon"));
+    }
+
+    private PageResponse<TripResponse> pageOf(TripResponse... items) {
+        return new PageResponse<>(List.of(items), 0, 10, items.length, 1, true);
     }
 
     private TripResponse response() {

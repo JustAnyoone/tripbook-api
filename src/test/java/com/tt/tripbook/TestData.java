@@ -14,8 +14,12 @@ public final class TestData {
     }
 
     public static Passenger passenger(String documentNumber) {
+        return passenger(documentNumber, "Ana Souza");
+    }
+
+    public static Passenger passenger(String documentNumber, String name) {
         Passenger passenger = new Passenger();
-        passenger.setName("Ana Souza");
+        passenger.setName(name);
         passenger.setDocumentNumber(documentNumber);
         passenger.setEmail("ana@email.com");
         passenger.setBirthDate(LocalDate.of(1998, 5, 20));
@@ -23,9 +27,13 @@ public final class TestData {
     }
 
     public static Destination destination(String city) {
+        return destination(city, "Portugal");
+    }
+
+    public static Destination destination(String city, String country) {
         Destination destination = new Destination();
         destination.setCity(city);
-        destination.setCountry("Portugal");
+        destination.setCountry(country);
         return destination;
     }
 

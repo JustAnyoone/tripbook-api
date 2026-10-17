@@ -1,5 +1,6 @@
 package com.tt.tripbook.controller;
 
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.PassengerRequest;
 import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.service.PassengerService;
@@ -7,11 +8,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/passengers")
@@ -24,10 +26,15 @@ public class PassengerController {
         this.service = service;
     }
 
-    @Operation(summary = "List all passengers")
+    @Operation(summary = "List passengers, paginated",
+            description = "Optional filter by name (case-insensitive, partial match). "
+                    + "Use page, size and sort (e.g. sort=name,desc) to control the result.")
+    @ApiResponse(responseCode = "400", description = "Invalid sort property or parameter value")
     @GetMapping
-    public List<PassengerResponse> findAll() {
-        return service.findAll();
+    public PageResponse<PassengerResponse> findAll(
+            @RequestParam(required = false) String name,
+            @ParameterObject @PageableDefault(size = 10, sort = "name") Pageable pageable) {
+        return service.findAll(name, pageable);
     }
 
     @Operation(summary = "Find a passenger by id")

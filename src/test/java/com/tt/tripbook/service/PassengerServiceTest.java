@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.PassengerRequest;
 import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.exception.ConflictException;
@@ -15,12 +16,16 @@ import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.repository.PassengerRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class PassengerServiceTest {
@@ -30,6 +35,42 @@ class PassengerServiceTest {
 
     @InjectMocks
     private PassengerService service;
+
+    @Test
+    void findAll_withoutName_returnsThePageOfEveryPassenger() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(repository.findAll(pageable)).thenReturn(new PageImpl<>(
+                List.of(passenger(1L, "AB123456"), passenger(2L, "CD789012")), pageable, 2));
+
+        PageResponse<PassengerResponse> result = service.findAll(null, pageable);
+
+        assertThat(result.content()).extracting(PassengerResponse::id).containsExactly(1L, 2L);
+        assertThat(result.totalElements()).isEqualTo(2);
+        verify(repository, never()).findByNameContainingIgnoreCase(any(), any());
+    }
+
+    @Test
+    void findAll_withBlankName_ignoresTheFilter() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(repository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        service.findAll("  ", pageable);
+
+        verify(repository).findAll(pageable);
+        verify(repository, never()).findByNameContainingIgnoreCase(any(), any());
+    }
+
+    @Test
+    void findAll_withName_filtersByTheTrimmedName() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(repository.findByNameContainingIgnoreCase("ana", pageable))
+                .thenReturn(new PageImpl<>(List.of(passenger(1L, "AB123456")), pageable, 1));
+
+        PageResponse<PassengerResponse> result = service.findAll(" ana ", pageable);
+
+        assertThat(result.content()).extracting(PassengerResponse::name).containsExactly("Ana Souza");
+        verify(repository, never()).findAll(any(Pageable.class));
+    }
 
     @Test
     void findById_throwsNotFound_whenThePassengerDoesNotExist() {

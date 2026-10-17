@@ -1,18 +1,24 @@
 package com.tt.tripbook.service;
 
+import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.TripRequest;
 import com.tt.tripbook.dto.TripResponse;
 import com.tt.tripbook.exception.BusinessRuleException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.repository.TripRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class TripService {
+
+    private static final Set<String> STATUSES = Set.of("PENDING", "CONFIRMED", "CANCELLED");
 
     private final TripRepository repository;
     private final PassengerService passengerService;
@@ -26,9 +32,13 @@ public class TripService {
         this.destinationService = destinationService;
     }
 
+    // Optional status filter (case-insensitive); a null or blank value means "no filter"
     @Transactional(readOnly = true)
-    public List<TripResponse> findAll() {
-        return repository.findAll().stream().map(TripResponse::from).toList();
+    public PageResponse<TripResponse> findAll(String status, Pageable pageable) {
+        Page<Trip> page = (status == null || status.isBlank())
+                ? repository.findAll(pageable)
+                : repository.findByStatus(normalizeStatus(status), pageable);
+        return PageResponse.from(page.map(TripResponse::from));
     }
 
     @Transactional(readOnly = true)
@@ -37,15 +47,15 @@ public class TripService {
     }
 
     @Transactional(readOnly = true)
-    public List<TripResponse> findByPassenger(Long passengerId) {
+    public PageResponse<TripResponse> findByPassenger(Long passengerId, Pageable pageable) {
         passengerService.getEntity(passengerId); // 404 if the passenger does not exist
-        return repository.findByPassengerId(passengerId).stream().map(TripResponse::from).toList();
+        return PageResponse.from(repository.findByPassengerId(passengerId, pageable).map(TripResponse::from));
     }
 
     @Transactional(readOnly = true)
-    public List<TripResponse> findByDestination(Long destinationId) {
+    public PageResponse<TripResponse> findByDestination(Long destinationId, Pageable pageable) {
         destinationService.getEntity(destinationId); // 404 if the destination does not exist
-        return repository.findByDestinationId(destinationId).stream().map(TripResponse::from).toList();
+        return PageResponse.from(repository.findByDestinationId(destinationId, pageable).map(TripResponse::from));
     }
 
     @Transactional
@@ -72,6 +82,15 @@ public class TripService {
     private Trip getEntity(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id " + id));
+    }
+
+    // An unknown status in the filter is a client error, not an empty result
+    private String normalizeStatus(String status) {
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if (!STATUSES.contains(normalized)) {
+            throw new BusinessRuleException("status must be PENDING, CONFIRMED or CANCELLED");
+        }
+        return normalized;
     }
 
     // Rule: the return date cannot be before the departure date
