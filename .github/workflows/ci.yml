@@ -27,4 +27,13 @@ jobs:
       # Tests use in-memory H2 (src/test/resources/application.properties),
       # so no MySQL service is needed here.
       - name: Build and run tests
-        run: ./mvnw -B verify
+        run: |
+          set -o pipefail
+          ./mvnw -B verify 2>&1 | tee build.log
+
+      # Copies the Maven errors into the run's annotations, so they show on the summary page
+      - name: Show build errors
+        if: failure()
+        run: |
+          MSG=$(grep -E "ERROR|FAIL" build.log | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          echo "::error title=Maven errors::${MSG}"
