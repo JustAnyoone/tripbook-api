@@ -12,6 +12,7 @@ import com.tt.tripbook.repository.UserRepository;
 import com.tt.tripbook.service.JwtService;
 import jakarta.servlet.Filter;
 import java.time.Instant;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +64,11 @@ class SecurityIntegrationTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .addFilters(springSecurityFilterChain)
                 .build();
+        userRepository.deleteAll();
+    }
+
+    @AfterEach
+    void cleanUp() {
         userRepository.deleteAll();
     }
 

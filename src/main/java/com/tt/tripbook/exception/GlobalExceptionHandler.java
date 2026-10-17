@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(HttpMessageNotReadableException.class)
         public ResponseEntity<ApiError> unreadableBody(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiError(400, "Malformed JSON or invalid value in the request body (dates must use yyyy-MM-dd)"));
+                .body(new ApiError(400, "Malformed JSON or invalid value in the request body (dates must be real calendar dates in yyyy-MM-dd format)"));
         }
 
         // Parâmetro de rota ou de query com tipo errado (ex.: /api/trips/abc)

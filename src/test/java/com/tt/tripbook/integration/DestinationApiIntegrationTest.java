@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.tt.tripbook.repository.DestinationRepository;
 import com.tt.tripbook.repository.PassengerRepository;
 import com.tt.tripbook.repository.TripRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,14 @@ class DestinationApiIntegrationTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        tripRepository.deleteAll();
+        passengerRepository.deleteAll();
+        destinationRepository.deleteAll();
+    }
+
+    // Leave the shared in-memory database empty for the test classes that run after this one
+    @AfterEach
+    void cleanUp() {
         tripRepository.deleteAll();
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();

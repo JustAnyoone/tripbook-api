@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Set;
 
@@ -23,13 +25,16 @@ public class TripService {
     private final TripRepository repository;
     private final PassengerService passengerService;
     private final DestinationService destinationService;
+    private final Clock clock;
 
     public TripService(TripRepository repository,
                        PassengerService passengerService,
-                       DestinationService destinationService) {
+                       DestinationService destinationService,
+                       Clock clock) {
         this.repository = repository;
         this.passengerService = passengerService;
         this.destinationService = destinationService;
+        this.clock = clock;
     }
 
     // Optional status filter (case-insensitive); a null or blank value means "no filter"
@@ -60,7 +65,7 @@ public class TripService {
 
     @Transactional
     public TripResponse create(TripRequest request) {
-        validateDates(request);
+        validateDates(request, null);
         Trip trip = new Trip();
         apply(request, trip);
         return TripResponse.from(repository.save(trip));
@@ -69,7 +74,7 @@ public class TripService {
     @Transactional
     public TripResponse update(Long id, TripRequest request) {
         Trip trip = getEntity(id);
-        validateDates(request);
+        validateDates(request, trip);
         apply(request, trip);
         return TripResponse.from(repository.save(trip));
     }
@@ -93,8 +98,19 @@ public class TripService {
         return normalized;
     }
 
-    // Rule: the return date cannot be before the departure date
-    private void validateDates(TripRequest request) {
+    // Rules: a trip cannot be scheduled in the past, and the return date cannot be before the departure date.
+    // When editing, a date that was not changed is accepted even if it has passed since, so the status
+    // or the price of a trip that already happened can still be corrected.
+    private void validateDates(TripRequest request, Trip existing) {
+        LocalDate today = LocalDate.now(clock);
+        if (request.departureDate().isBefore(today)
+                && (existing == null || !request.departureDate().equals(existing.getDepartureDate()))) {
+            throw new BusinessRuleException("Departure date cannot be in the past");
+        }
+        if (request.returnDate() != null && request.returnDate().isBefore(today)
+                && (existing == null || !request.returnDate().equals(existing.getReturnDate()))) {
+            throw new BusinessRuleException("Return date cannot be in the past");
+        }
         if (request.returnDate() != null && request.returnDate().isBefore(request.departureDate())) {
             throw new BusinessRuleException("Return date cannot be before departure date");
         }
