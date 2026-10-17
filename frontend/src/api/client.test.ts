@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, buildQuery, destinationsApi } from './client';
+import { saveToken } from '../auth/token';
+import { ApiError, authApi, buildQuery, destinationsApi, setUnauthorizedHandler } from './client';
 
 function jsonResponse(status: number, body: unknown) {
   return Promise.resolve(
@@ -70,5 +71,71 @@ describe('API client', () => {
     expect(url).toBe('/api/destinations');
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body as string)).toEqual({ city: 'Lisbon', country: 'Portugal', description: '' });
+  });
+});
+
+describe('authentication', () => {
+  afterEach(() => {
+    localStorage.clear();
+    setUnauthorizedHandler(null);
+  });
+
+  function headersOfLastCall(fetchMock: ReturnType<typeof vi.fn>): Record<string, string> {
+    return (fetchMock.mock.calls.at(-1)?.[1] as RequestInit | undefined)?.headers as Record<string, string>;
+  }
+
+  it('sends the stored token as a Bearer header', async () => {
+    saveToken('abc.def.ghi');
+    const fetchMock = vi.fn(() => jsonResponse(200, { content: [], page: 0, size: 10, totalElements: 0, totalPages: 0, last: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await destinationsApi.list({ page: 0, size: 10 });
+
+    expect(headersOfLastCall(fetchMock).Authorization).toBe('Bearer abc.def.ghi');
+  });
+
+  it('sends no Authorization header when there is no token', async () => {
+    const fetchMock = vi.fn(() => jsonResponse(200, { content: [], page: 0, size: 10, totalElements: 0, totalPages: 0, last: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await destinationsApi.list({ page: 0, size: 10 });
+
+    expect(headersOfLastCall(fetchMock)).toBeUndefined();
+  });
+
+  it('does not attach a stale token to login', async () => {
+    saveToken('stale-token');
+    const fetchMock = vi.fn(() => jsonResponse(200, { token: 't', tokenType: 'Bearer', expiresIn: 3600, user: { id: 1, name: 'Ana', email: 'ana@email.com' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await authApi.login({ email: 'ana@email.com', password: 'a-long-passphrase' });
+
+    expect(headersOfLastCall(fetchMock).Authorization).toBeUndefined();
+    expect(headersOfLastCall(fetchMock)['Content-Type']).toBe('application/json');
+  });
+
+  it('calls the unauthorized handler when a signed-in request gets 401', async () => {
+    saveToken('expired-token');
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { status: 401, message: 'Authentication required' })));
+
+    await expect(destinationsApi.list({ page: 0, size: 10 })).rejects.toMatchObject({ status: 401 });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the session when login itself answers 401', async () => {
+    saveToken('still-good');
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { status: 401, message: 'Invalid email or password' })));
+
+    await expect(authApi.login({ email: 'ana@email.com', password: 'wrong-password' })).rejects.toMatchObject({
+      status: 401,
+      message: 'Invalid email or password',
+    });
+
+    expect(handler).not.toHaveBeenCalled();
   });
 });

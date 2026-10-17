@@ -1,12 +1,17 @@
+import { getToken } from '../auth/token';
 import type {
+  AuthResult,
+  Credentials,
   Destination,
   DestinationInput,
   ListParams,
   Page,
   Passenger,
   PassengerInput,
+  Registration,
   Trip,
   TripInput,
+  User,
 } from './types';
 
 const BASE_URL: string = import.meta.env.VITE_API_URL ?? '';
@@ -22,20 +27,40 @@ export class ApiError extends Error {
   }
 }
 
+// The auth provider registers a callback here: when a signed-in user's token is rejected
+// (expired or invalid), it clears the session and sends the user back to the login page.
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
 export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Try again.';
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+interface RequestOptions {
+  /** Login and register answer 401 for wrong credentials: that is a message, not an expired session. */
+  publicEndpoint?: boolean;
+}
+
+async function request<T>(path: string, init?: RequestInit, options: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (init?.body) headers['Content-Type'] = 'application/json';
+  const token = getToken();
+  if (token && !options.publicEndpoint) headers.Authorization = `Bearer ${token}`;
+
   let response: Response;
   try {
     response = await fetch(BASE_URL + path, {
       ...init,
-      headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
     });
   } catch {
     throw new ApiError(0, 'Cannot reach the TripBook API. Check that the server is running.');
   }
+
+  if (response.status === 401 && token && !options.publicEndpoint) onUnauthorized?.();
 
   if (!response.ok) {
     // The API answers errors as { status, message, timestamp }
@@ -84,3 +109,11 @@ function makeResource<T, I>(path: string): Resource<T, I> {
 export const destinationsApi = makeResource<Destination, DestinationInput>('/api/destinations');
 export const passengersApi = makeResource<Passenger, PassengerInput>('/api/passengers');
 export const tripsApi = makeResource<Trip, TripInput>('/api/trips');
+
+export const authApi = {
+  login: (credentials: Credentials) =>
+    request<AuthResult>('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) }, { publicEndpoint: true }),
+  register: (registration: Registration) =>
+    request<AuthResult>('/api/auth/register', { method: 'POST', body: JSON.stringify(registration) }, { publicEndpoint: true }),
+  me: () => request<User>('/api/auth/me'),
+};
