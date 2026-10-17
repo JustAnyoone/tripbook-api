@@ -76,3 +76,52 @@ jobs:
       # Type-checks and builds the production bundle
       - name: Build
         run: npm run build
+
+  # The single-container image used for deployment (API + front-end), against a real MySQL
+  fullstack-image:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-password
+          MYSQL_DATABASE: tripbook
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-password --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -f Dockerfile.render -t tripbook-fullstack .
+
+      - name: Run it and smoke-test the page and the API
+        run: |
+          docker run -d --name app --network host \
+            -e SERVER_PORT=10000 \
+            -e SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/tripbook?createDatabaseIfNotExist=true" \
+            -e DB_PASSWORD=ci-password \
+            -e JWT_SECRET=ci-secret-ci-secret-ci-secret-ci-secret \
+            tripbook-fullstack
+          for i in $(seq 1 60); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:10000/login)" = "200" ] && break
+            sleep 5
+          done
+          curl -sf http://localhost:10000/login | grep -q '<div id="root">'
+          curl -sf http://localhost:10000/passengers | grep -q '<div id="root">'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:10000/api/trips)" = "401"
+          TOKEN=$(curl -sf -X POST http://localhost:10000/api/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"name":"CI User","email":"ci@example.com","password":"a-long-passphrase"}' \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['token'])")
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:10000/api/trips
+
+      - name: Show the application log when something failed
+        if: failure()
+        run: |
+          LOG=$(docker logs app 2>&1 | tail -80 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          echo "::error title=Application log::${LOG}"
+
