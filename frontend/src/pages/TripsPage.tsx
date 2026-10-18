@@ -4,7 +4,7 @@ import { TRIP_STATUSES, type Destination, type Passenger, type Trip, type TripIn
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Field, FormShell } from '../components/FormShell';
 import { ListPage, type Column, type FormProps } from '../components/ListPage';
-import { formatDate, formatNights, formatPrice, nightsBetween } from '../lib/dates';
+import { formatDate, formatNights, formatPrice, nightsBetween, todayIso, validateTripDates } from '../lib/dates';
 
 const STATUS_LABELS: Record<TripStatus, string> = {
   PENDING: 'Pending',
@@ -110,21 +110,31 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
 
   if (!passengers || !destinations) return <p className="dialog-text">Loading passengers and destinations…</p>;
 
+  const today = todayIso();
+  // An unchanged date of an existing trip may already be in the past; any new date may not
+  const minDeparture = departureDate === initial?.departureDate ? undefined : today;
+  const minReturn = [departureDate, returnDate === initial?.returnDate ? undefined : today]
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
+
   const missingData = passengers.length === 0 || destinations.length === 0;
 
   return (
     <FormShell
       submitLabel={initial ? 'Save changes' : 'Add trip'}
-      onSubmit={() =>
-        onSubmit({
+      onSubmit={async () => {
+        const problem = validateTripDates({ departureDate, returnDate: returnDate || null }, today, initial ?? undefined);
+        if (problem) throw new Error(problem);
+        await onSubmit({
           departureDate,
           returnDate: returnDate || null,
           price: Number(price),
           status,
           passengerId: Number(passengerId),
           destinationId: Number(destinationId),
-        })
-      }
+        });
+      }}
       onCancel={onCancel}
     >
       {missingData && <p className="field-hint">A trip needs at least one passenger and one destination. Add them first.</p>}
@@ -154,10 +164,10 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
       </Field>
       <div className="field-row">
         <Field label="Departure date">
-          {(id) => <input id={id} type="date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} required />}
+          {(id) => <input id={id} type="date" value={departureDate} min={minDeparture} onChange={(e) => setDepartureDate(e.target.value)} required />}
         </Field>
         <Field label="Return date" hint="Optional">
-          {(id) => <input id={id} type="date" value={returnDate} min={departureDate || undefined} onChange={(e) => setReturnDate(e.target.value)} />}
+          {(id) => <input id={id} type="date" value={returnDate} min={minReturn} onChange={(e) => setReturnDate(e.target.value)} />}
         </Field>
       </div>
       <div className="field-row">

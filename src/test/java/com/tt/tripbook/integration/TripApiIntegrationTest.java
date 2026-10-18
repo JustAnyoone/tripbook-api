@@ -16,10 +16,17 @@ import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.repository.DestinationRepository;
 import com.tt.tripbook.repository.PassengerRepository;
 import com.tt.tripbook.repository.TripRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -32,6 +39,16 @@ import org.springframework.web.context.WebApplicationContext;
 // on Spring Boot's MockMvc auto-configuration annotations (which moved in Boot 4).
 @SpringBootTest
 class TripApiIntegrationTest {
+
+    // The date rules depend on "today": the clock is frozen so these tests do not expire
+    @TestConfiguration
+    static class FrozenClock {
+        @Bean
+        @Primary
+        Clock testClock() {
+            return Clock.fixed(Instant.parse("2026-10-17T12:00:00Z"), ZoneOffset.UTC);
+        }
+    }
 
     @Autowired
     private WebApplicationContext context;
@@ -51,6 +68,14 @@ class TripApiIntegrationTest {
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
         // Children first, because of the foreign keys
+        tripRepository.deleteAll();
+        passengerRepository.deleteAll();
+        destinationRepository.deleteAll();
+    }
+
+    // Leave the shared in-memory database empty for the test classes that run after this one
+    @AfterEach
+    void cleanUp() {
         tripRepository.deleteAll();
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();
@@ -97,6 +122,35 @@ class TripApiIntegrationTest {
                         .content(tripJson(ana.getId(), lisbon.getId(), "2026-12-10")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Return date cannot be before departure date"));
+
+        assertThat(tripRepository.count()).isZero();
+    }
+
+    @Test
+    void postTrip_returns400_andSavesNothing_whenTheDepartureIsInThePast() throws Exception {
+        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson(ana.getId(), lisbon.getId(), "2026-12-30")
+                                .replace("2026-12-20", "2026-10-16")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Departure date cannot be in the past"));
+
+        assertThat(tripRepository.count()).isZero();
+    }
+
+    @Test
+    void postTrip_returns400_whenTheDateDoesNotExistInTheCalendar() throws Exception {
+        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson(ana.getId(), lisbon.getId(), "2026-12-30")
+                                .replace("2026-12-20", "2026-11-31")))
+                .andExpect(status().isBadRequest());
 
         assertThat(tripRepository.count()).isZero();
     }

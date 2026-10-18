@@ -19,12 +19,15 @@ import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.repository.TripRepository;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -45,8 +48,15 @@ class TripServiceTest {
     @Mock
     private DestinationService destinationService;
 
-    @InjectMocks
+    // "Today" is frozen at 2026-10-17, so the date rules are tested the same way on any day
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-17T12:00:00Z"), ZoneOffset.UTC);
+
     private TripService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new TripService(repository, passengerService, destinationService, CLOCK);
+    }
 
     @Test
     void create_savesTheTrip_withTheLoadedPassengerAndDestination() {
@@ -88,6 +98,72 @@ class TripServiceTest {
 
         // The rule is checked first, so nothing is loaded or saved
         verifyNoInteractions(repository, passengerService, destinationService);
+    }
+
+    @Test
+    void create_throwsBusinessRule_whenTheDepartureDateIsInThePast() {
+        TripRequest past = new TripRequest(LocalDate.of(2026, 10, 16), null, new BigDecimal("100"), "PENDING", 1L, 1L);
+
+        assertThatThrownBy(() -> service.create(past))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Departure date cannot be in the past");
+
+        verifyNoInteractions(repository, passengerService, destinationService);
+    }
+
+    @Test
+    void create_acceptsADepartureToday() {
+        when(passengerService.getEntity(1L)).thenReturn(passenger(1L));
+        when(destinationService.getEntity(1L)).thenReturn(destination(1L));
+        when(repository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        TripRequest today = new TripRequest(LocalDate.of(2026, 10, 17), LocalDate.of(2026, 10, 17),
+                new BigDecimal("100"), "PENDING", 1L, 1L);
+
+        TripResponse response = service.create(today);
+
+        assertThat(response.departureDate()).isEqualTo(LocalDate.of(2026, 10, 17));
+    }
+
+    @Test
+    void create_throwsBusinessRule_whenTheReturnDateIsInThePast() {
+        TripRequest past = new TripRequest(LocalDate.of(2026, 12, 20), LocalDate.of(2026, 10, 16),
+                new BigDecimal("100"), "PENDING", 1L, 1L);
+
+        assertThatThrownBy(() -> service.create(past))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Return date cannot be in the past");
+
+        verifyNoInteractions(repository, passengerService, destinationService);
+    }
+
+    @Test
+    void update_keepsAnUnchangedPastDate_soATripThatAlreadyHappenedCanStillBeEdited() {
+        Trip existing = trip(1L);
+        existing.setDepartureDate(LocalDate.of(2026, 9, 1));
+        existing.setReturnDate(LocalDate.of(2026, 9, 10));
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(passengerService.getEntity(1L)).thenReturn(passenger(1L));
+        when(destinationService.getEntity(1L)).thenReturn(destination(1L));
+        when(repository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        TripRequest sameDates = new TripRequest(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10),
+                new BigDecimal("100"), "CANCELLED", 1L, 1L);
+
+        TripResponse response = service.update(1L, sameDates);
+
+        assertThat(response.status()).isEqualTo("CANCELLED");
+    }
+
+    @Test
+    void update_throwsBusinessRule_whenTheDepartureIsMovedToThePast() {
+        Trip existing = trip(1L);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        TripRequest moved = new TripRequest(LocalDate.of(2026, 10, 1), null, new BigDecimal("100"), "PENDING", 1L, 1L);
+
+        assertThatThrownBy(() -> service.update(1L, moved))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Departure date cannot be in the past");
+
+        verify(repository, never()).save(any(Trip.class));
     }
 
     @Test

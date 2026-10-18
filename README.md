@@ -13,7 +13,7 @@ The project started as a university assignment (Object-Oriented Programming, CEU
 
 - Full CRUD for passengers, destinations and trips
 - Each trip links one passenger to one destination
-- Business rules: the return date cannot be before the departure date, and the passenger and destination must exist
+- Business rules: dates must be real calendar dates (no 31 November), a trip cannot start or end in the past, the return date cannot be before the departure date, and the passenger and destination must exist. Editing a trip keeps its dates even after they have passed, so a trip that already happened can still be corrected
 - A destination that still has trips cannot be deleted; deleting a passenger also deletes their trips
 - Pagination, sorting and filtering on every list endpoint
 - Accounts with sign-up and sign-in: passwords stored as BCrypt hashes, stateless JWT access tokens, every `/api` route protected except register and login
@@ -267,7 +267,7 @@ Every error uses the same format:
 |--------|------------------------------------------------------------------------------------------|
 | 201    | Record created                                                                           |
 | 204    | Record deleted                                                                           |
-| 400    | Invalid data, unknown status or sort property, or return date before departure date      |
+| 400    | Invalid data, impossible date, date in the past, unknown status or sort property, or return date before departure date |
 | 401    | Missing, invalid or expired token; wrong email or password on login                      |
 | 404    | Trip, passenger or destination not found                                                 |
 | 409    | Document number or email already registered, or deleting a destination that still has trips |
