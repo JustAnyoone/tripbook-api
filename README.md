@@ -7,7 +7,7 @@
 
 REST API for managing trip bookings: passengers, destinations and the trips that connect them. Built with Spring Boot, Spring Data JPA and MySQL.
 
-The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests, continuous integration, a React front-end and JWT authentication are already in place; Docker and deployment are next.
+The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests, continuous integration, a React front-end and JWT authentication are already in place; deployment is next.
 
 ## Features
 
@@ -31,7 +31,7 @@ The project started as a university assignment (Object-Oriented Programming, CEU
 - JUnit 5, Mockito, AssertJ, MockMvc, H2 (tests only)
 - React 19, TypeScript, Vite, React Router
 - Vitest and Testing Library
-- Maven, npm, GitHub Actions
+- Maven, npm, Docker (multi-stage builds, docker compose), nginx, GitHub Actions
 
 ## Architecture
 
@@ -78,7 +78,21 @@ Modeling notes:
 - Java 17 or later
 - MySQL 8 running on port 3306 (not needed to run the tests)
 
-### Run the application
+### Run everything with Docker
+
+The quickest way: MySQL, the API and the front-end start together, with no Java, Node or MySQL installed.
+
+```bash
+docker compose up --build
+```
+
+Then open http://localhost:3000 and create an account. The API is also on http://localhost:8080 (Swagger UI at `/swagger-ui/index.html`). The database lives in a Docker volume, so data survives restarts; `docker compose down -v` erases it.
+
+To use your own secrets, copy `.env.example` to `.env` and edit `DB_PASSWORD` and `JWT_SECRET` (32+ characters). Without a `.env` the local defaults are used, which is fine for your own machine and not for anything public.
+
+How it fits together: nginx serves the React build and forwards `/api` to the API container, so the browser sees a single origin and CORS never comes into play. The API waits for MySQL's health check before starting. CI builds the images and runs a smoke test against the running stack on every push.
+
+### Run the application without Docker
 
 1. Clone the repository:
 
@@ -351,7 +365,8 @@ frontend/
 - [x] React front-end
 - [x] Authentication (Spring Security with JWT)
 - [ ] Roles and per-user data
-- [ ] Docker setup and deployment
+- [x] Docker setup (docker compose)
+- [ ] Deployment
 - [ ] `enum` for the trip status
 
 ## License
