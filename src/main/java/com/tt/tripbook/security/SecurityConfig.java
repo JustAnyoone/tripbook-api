@@ -1,6 +1,7 @@
 package com.tt.tripbook.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import com.tt.tripbook.config.SpaConfig;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -46,6 +47,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        // The front-end's own files and routes are public; the data behind /api is not
+                        .requestMatchers(HttpMethod.GET, "/", "/index.html", "/assets/**", "/*.svg", "/*.ico", "/*.png").permitAll()
+                        .requestMatchers(HttpMethod.GET, SpaConfig.CLIENT_ROUTES).permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(Customizer.withDefaults())

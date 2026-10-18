@@ -132,6 +132,19 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void frontEndRoutes_areNotBehindTheLogin_butTheApiStillIs() throws Exception {
+        // In tests the React build is not on the classpath, so these answer 404; the point is "not 401"
+        for (String route : new String[] {"/", "/login", "/register", "/trips", "/passengers", "/destinations"}) {
+            int status = mockMvc.perform(get(route)).andReturn().getResponse().getStatus();
+            assertThat(status).as("status of GET " + route).isNotEqualTo(401);
+        }
+
+        mockMvc.perform(get("/api/trips")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/passengers")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/some-unknown-path")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void swaggerDocumentation_isPublic() throws Exception {
         mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
     }

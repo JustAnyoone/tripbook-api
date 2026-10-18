@@ -1,0 +1,21 @@
+# Render Blueprint: one free web service that runs the API and the front-end together.
+# The database is NOT created here: Render has no managed MySQL, so point the three
+# database variables at any MySQL 8 (for example Aiven's free plan). See the README.
+services:
+  - type: web
+    name: tripbook
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    healthCheckPath: /login
+    envVars:
+      - key: SERVER_PORT
+        value: "10000"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
