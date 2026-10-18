@@ -76,3 +76,42 @@ jobs:
       # Type-checks and builds the production bundle
       - name: Build
         run: npm run build
+
+  # Builds the three images and starts the whole stack, then talks to it like a user would:
+  # create an account through the front-end's nginx, use the token on a protected route.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Build and start the stack
+        run: docker compose up --build -d
+
+      - name: Wait for the API and run a smoke test
+        run: |
+          for i in $(seq 1 60); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/auth/login \
+              -H "Content-Type: application/json" -d '{"email":"x@x.com","password":"wrong-password"}' || true)
+            [ "$CODE" = "401" ] && break
+            sleep 5
+          done
+          echo "login probe answered $CODE"
+          [ "$CODE" = "401" ]
+
+          TOKEN=$(curl -sf -X POST http://localhost:3000/api/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"name":"CI User","email":"ci@example.com","password":"a-long-passphrase"}' \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['token'])")
+
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/destinations)" = "401"
+          curl -sf -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/destinations
+          curl -sf http://localhost:3000/ | grep -q "<div id=\"root\">"
+
+      - name: Show container logs when something failed
+        if: failure()
+        run: docker compose logs --no-color --tail=80 | head -150 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' | xargs -0 -I{} echo "::error title=Container logs::{}"
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
