@@ -23,8 +23,9 @@ public class Trip {
     private BigDecimal price;
 
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    private TripStatus status;
 
 
     @ManyToOne(optional = false)
@@ -68,11 +69,11 @@ public class Trip {
         this.price = price;
     }
 
-    public String getStatus() {
+    public TripStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(TripStatus status) {
         this.status = status;
     }
 

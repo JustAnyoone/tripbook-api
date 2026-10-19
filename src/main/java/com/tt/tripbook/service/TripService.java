@@ -6,6 +6,7 @@ import com.tt.tripbook.dto.TripResponse;
 import com.tt.tripbook.exception.BusinessRuleException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.Trip;
+import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.TripRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,12 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Locale;
-import java.util.Set;
 
 @Service
 public class TripService {
-
-    private static final Set<String> STATUSES = Set.of("PENDING", "CONFIRMED", "CANCELLED");
 
     private final TripRepository repository;
     private final PassengerService passengerService;
@@ -90,12 +88,12 @@ public class TripService {
     }
 
     // An unknown status in the filter is a client error, not an empty result
-    private String normalizeStatus(String status) {
-        String normalized = status.trim().toUpperCase(Locale.ROOT);
-        if (!STATUSES.contains(normalized)) {
+    private TripStatus normalizeStatus(String status) {
+        try {
+            return TripStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("status must be PENDING, CONFIRMED or CANCELLED");
         }
-        return normalized;
     }
 
     // Rules: a trip cannot be scheduled in the past, and the return date cannot be before the departure date.
@@ -121,7 +119,8 @@ public class TripService {
         trip.setDepartureDate(request.departureDate());
         trip.setReturnDate(request.returnDate());
         trip.setPrice(request.price());
-        trip.setStatus(request.status());
+        // The request validation already guarantees one of the enum names
+        trip.setStatus(TripStatus.valueOf(request.status()));
         trip.setPassenger(passengerService.getEntity(request.passengerId()));
         trip.setDestination(destinationService.getEntity(request.destinationId()));
     }

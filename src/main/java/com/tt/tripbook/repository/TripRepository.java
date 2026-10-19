@@ -1,6 +1,7 @@
 package com.tt.tripbook.repository;
 
 import com.tt.tripbook.model.Trip;
+import com.tt.tripbook.model.TripStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -16,7 +17,7 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     Page<Trip> findAll(Pageable pageable);
 
     @EntityGraph(attributePaths = {"passenger", "destination"})
-    Page<Trip> findByStatus(String status, Pageable pageable);
+    Page<Trip> findByStatus(TripStatus status, Pageable pageable);
 
     // These two traverse the relationship: Trip.passenger.id and Trip.destination.id
     @EntityGraph(attributePaths = {"passenger", "destination"})

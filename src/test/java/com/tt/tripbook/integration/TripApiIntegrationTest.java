@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
+import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.DestinationRepository;
 import com.tt.tripbook.repository.PassengerRepository;
 import com.tt.tripbook.repository.TripRepository;
@@ -179,7 +180,7 @@ class TripApiIntegrationTest {
         late.setDepartureDate(java.time.LocalDate.of(2027, 1, 10));
         late.setReturnDate(java.time.LocalDate.of(2027, 1, 20));
         Trip cancelled = trip(ana, lisbon);
-        cancelled.setStatus("CANCELLED");
+        cancelled.setStatus(TripStatus.CANCELLED);
         tripRepository.save(early);
         tripRepository.save(late);
         tripRepository.save(cancelled);

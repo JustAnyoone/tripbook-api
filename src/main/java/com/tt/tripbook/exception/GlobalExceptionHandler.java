@@ -15,66 +15,66 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-        // Unreadable body: malformed JSON or an invalid value (e.g. the date "2026-13-45")
-        @ExceptionHandler(HttpMessageNotReadableException.class)
-        public ResponseEntity<ApiError> unreadableBody(HttpMessageNotReadableException ex) {
+    // Unreadable body: malformed JSON or an invalid value (e.g. the date "2026-13-45")
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> unreadableBody(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiError(400, "Malformed JSON or invalid value in the request body (dates must be real calendar dates in yyyy-MM-dd format)"));
-        }
+    }
 
-        // Route or query parameter of the wrong type (e.g. /api/trips/abc)
-        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-        public ResponseEntity<ApiError> wrongParameterType(MethodArgumentTypeMismatchException ex) {
+    // Route or query parameter of the wrong type (e.g. /api/trips/abc)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> wrongParameterType(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiError(400, "Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'"));
-        }
-        
-        @ExceptionHandler(ResourceNotFoundException.class)
-        public ResponseEntity<ApiError> notFound(ResourceNotFoundException ex) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiError(404, ex.getMessage()));
-        }
+    }
 
-        @ExceptionHandler(ConflictException.class)
-        public ResponseEntity<ApiError> conflict(ConflictException ex) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(new ApiError(409, ex.getMessage()));
-        }
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiError> notFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiError(404, ex.getMessage()));
+    }
 
-        // Invalid input (@Valid): joins the messages of every failing field
-        @ExceptionHandler(MethodArgumentNotValidException.class)
-        public ResponseEntity<ApiError> validation(MethodArgumentNotValidException ex) {
-                String message = ex.getBindingResult().getFieldErrors().stream()
-                        .map(erro -> erro.getField() + ": " + erro.getDefaultMessage())
-                        .collect(Collectors.joining("; "));
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ApiError(400, message));
-        }
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> conflict(ConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, ex.getMessage()));
+    }
 
-        // Safety net: a foreign key or unique constraint violation that nothing handled earlier
-        @ExceptionHandler(DataIntegrityViolationException.class)
-        public ResponseEntity<ApiError> integrity(DataIntegrityViolationException ex) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(new ApiError(409, "Operation refused: the record is in use or violates a data constraint."));
-        }
+    // Invalid input (@Valid): joins the messages of every failing field
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> validation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(erro -> erro.getField() + ": " + erro.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiError(400, message));
+    }
 
-        // Unknown property in ?sort=... (e.g. sort=banana): a client error, not a server error
-        @ExceptionHandler(PropertyReferenceException.class)
-        public ResponseEntity<ApiError> invalidSortProperty(PropertyReferenceException ex) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ApiError(400, "Invalid sort property: '" + ex.getPropertyName() + "'"));
-        }
+    // Safety net: a foreign key or unique constraint violation that nothing handled earlier
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> integrity(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, "Operation refused: the record is in use or violates a data constraint."));
+    }
 
-        // Wrong email or password on login
-        @ExceptionHandler(InvalidCredentialsException.class)
-        public ResponseEntity<ApiError> invalidCredentials(InvalidCredentialsException ex) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiError(401, ex.getMessage()));
-        }
+    // Unknown property in ?sort=... (e.g. sort=banana): a client error, not a server error
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ApiError> invalidSortProperty(PropertyReferenceException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiError(400, "Invalid sort property: '" + ex.getPropertyName() + "'"));
+    }
 
-        @ExceptionHandler(BusinessRuleException.class)
-        public ResponseEntity<ApiError> BusinessRule(BusinessRuleException ex) {
+    // Wrong email or password on login
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiError> invalidCredentials(InvalidCredentialsException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiError(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ApiError> BusinessRule(BusinessRuleException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiError(400, ex.getMessage()));
-        }
+    }
 }

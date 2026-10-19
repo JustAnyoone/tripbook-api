@@ -71,7 +71,7 @@ Modeling notes:
 - `Trip` owns the foreign keys `passenger_id` and `destination_id` (`@ManyToOne` + `@JoinColumn`).
 - Removing a passenger removes their trips (`cascade` and `orphanRemoval`), because a trip cannot exist without its passenger.
 - A destination with trips cannot be removed (HTTP 409). The foreign key enforces the same rule at the database level.
-- `status` accepts only `PENDING`, `CONFIRMED` or `CANCELLED`.
+- `status` is a Java `enum` (`TripStatus`) stored as text and accepts only `PENDING`, `CONFIRMED` or `CANCELLED`.
 - `price` is a `BigDecimal`, which is the right type for money.
 
 ## Getting started
@@ -370,7 +370,7 @@ frontend/
 - [ ] Roles and per-user data
 - [x] Docker setup (docker compose)
 - [ ] Deployment
-- [ ] `enum` for the trip status
+- [x] `enum` for the trip status
 
 ## License
 

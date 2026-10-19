@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
+import com.tt.tripbook.model.TripStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
@@ -68,7 +69,7 @@ class TripRepositoryTest {
         Passenger ana = passengerRepository.save(passenger("AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Trip pending = trip(ana, lisbon);
-        pending.setStatus("PENDING");
+        pending.setStatus(TripStatus.PENDING);
         tripRepository.save(pending);
         Trip early = tripRepository.save(trip(ana, lisbon));
         Trip late = trip(ana, lisbon);
@@ -77,7 +78,7 @@ class TripRepositoryTest {
         late = tripRepository.save(late);
 
         Page<Trip> result = tripRepository.findByStatus(
-                "CONFIRMED", PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "departureDate")));
+                TripStatus.CONFIRMED, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "departureDate")));
 
         assertThat(result.getContent()).extracting(Trip::getId).containsExactly(late.getId(), early.getId());
         assertThat(result.getTotalElements()).isEqualTo(2);

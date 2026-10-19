@@ -3,6 +3,7 @@ package com.tt.tripbook;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
+import com.tt.tripbook.model.TripStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -42,7 +43,7 @@ public final class TestData {
         trip.setDepartureDate(LocalDate.of(2026, 12, 20));
         trip.setReturnDate(LocalDate.of(2026, 12, 30));
         trip.setPrice(new BigDecimal("3500.50"));
-        trip.setStatus("CONFIRMED");
+        trip.setStatus(TripStatus.CONFIRMED);
         trip.setPassenger(passenger);
         trip.setDestination(destination);
         return trip;

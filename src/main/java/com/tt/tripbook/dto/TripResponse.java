@@ -22,7 +22,7 @@ public record TripResponse(
                 trip.getDepartureDate(),
                 trip.getReturnDate(),
                 trip.getPrice(),
-                trip.getStatus(),
+                trip.getStatus().name(),
                 PassengerResponse.from(trip.getPassenger()),
                 DestinationResponse.from(trip.getDestination()));
     }
