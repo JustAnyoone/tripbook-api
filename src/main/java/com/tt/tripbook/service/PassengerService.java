@@ -5,8 +5,10 @@ import com.tt.tripbook.dto.PassengerRequest;
 import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
+import com.tt.tripbook.model.AppUser;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.repository.PassengerRepository;
+import com.tt.tripbook.security.CurrentUser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,17 +18,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class PassengerService {
 
     private final PassengerRepository repository;
+    private final CurrentUser currentUser;
 
-    public PassengerService(PassengerRepository repository) {
+    public PassengerService(PassengerRepository repository, CurrentUser currentUser) {
         this.repository = repository;
+        this.currentUser = currentUser;
     }
 
+    // Every method works on the signed-in account's passengers only.
     // Optional name filter; a null or blank value means "no filter"
     @Transactional(readOnly = true)
     public PageResponse<PassengerResponse> findAll(String name, Pageable pageable) {
+        Long ownerId = currentUser.id();
         Page<Passenger> page = (name == null || name.isBlank())
-                ? repository.findAll(pageable)
-                : repository.findByNameContainingIgnoreCase(name.trim(), pageable);
+                ? repository.findByOwnerId(ownerId, pageable)
+                : repository.findByOwnerIdAndNameContainingIgnoreCase(ownerId, name.trim(), pageable);
         return PageResponse.from(page.map(PassengerResponse::from));
     }
 
@@ -37,10 +43,12 @@ public class PassengerService {
 
     @Transactional
     public PassengerResponse create(PassengerRequest request) {
-        if (repository.existsByDocumentNumber(request.documentNumber())) {
+        AppUser owner = currentUser.get();
+        if (repository.existsByOwnerIdAndDocumentNumber(owner.getId(), request.documentNumber())) {
             throw new ConflictException("A passenger with this document number already exists");
         }
         Passenger passenger = new Passenger();
+        passenger.setOwner(owner);
         apply(request, passenger);
         return PassengerResponse.from(repository.save(passenger));
     }
@@ -49,7 +57,7 @@ public class PassengerService {
     public PassengerResponse update(Long id, PassengerRequest request) {
         Passenger passenger = getEntity(id);
         // Another passenger (different id) must not already own this document number
-        if (repository.existsByDocumentNumberAndIdNot(request.documentNumber(), id)) {
+        if (repository.existsByOwnerIdAndDocumentNumberAndIdNot(currentUser.id(), request.documentNumber(), id)) {
             throw new ConflictException("Another passenger already has this document number");
         }
         apply(request, passenger);
@@ -62,9 +70,10 @@ public class PassengerService {
         repository.delete(getEntity(id));
     }
 
-    // Package-private: TripService needs the entity itself, not the DTO
+    // Package-private: TripService needs the entity itself, not the DTO.
+    // Another account's passenger is reported as not found, so its existence is not revealed.
     Passenger getEntity(Long id) {
-        return repository.findById(id)
+        return repository.findByIdAndOwnerId(id, currentUser.id())
                 .orElseThrow(() -> new ResourceNotFoundException("Passenger not found: id " + id));
     }
 

@@ -3,9 +3,11 @@ package com.tt.tripbook.repository;
 import static com.tt.tripbook.TestData.destination;
 import static com.tt.tripbook.TestData.passenger;
 import static com.tt.tripbook.TestData.trip;
+import static com.tt.tripbook.TestData.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tt.tripbook.model.AppUser;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
@@ -35,33 +37,42 @@ class PassengerRepositoryTest {
     @Autowired
     private TripRepository tripRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @PersistenceContext
     private EntityManager entityManager;
 
     @Test
-    void existsByDocumentNumber_isTrueOnlyForStoredNumbers() {
-        passengerRepository.save(passenger("AB123456"));
+    void existsByOwnerIdAndDocumentNumber_isScopedToTheOwner() {
+        AppUser ana = userRepository.save(user("ana@email.com"));
+        AppUser bob = userRepository.save(user("bob@email.com"));
+        passengerRepository.save(passenger(ana, "AB123456"));
 
-        assertThat(passengerRepository.existsByDocumentNumber("AB123456")).isTrue();
-        assertThat(passengerRepository.existsByDocumentNumber("ZZ999999")).isFalse();
+        assertThat(passengerRepository.existsByOwnerIdAndDocumentNumber(ana.getId(), "AB123456")).isTrue();
+        assertThat(passengerRepository.existsByOwnerIdAndDocumentNumber(ana.getId(), "ZZ999999")).isFalse();
+        // The same number under another account does not count
+        assertThat(passengerRepository.existsByOwnerIdAndDocumentNumber(bob.getId(), "AB123456")).isFalse();
     }
 
     @Test
-    void existsByDocumentNumberAndIdNot_ignoresThePassengerItself() {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+    void existsByOwnerIdAndDocumentNumberAndIdNot_ignoresThePassengerItself() {
+        AppUser owner = userRepository.save(user("ana@email.com"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
 
-        assertThat(passengerRepository.existsByDocumentNumberAndIdNot("AB123456", ana.getId())).isFalse();
-        assertThat(passengerRepository.existsByDocumentNumberAndIdNot("AB123456", ana.getId() + 1)).isTrue();
+        assertThat(passengerRepository.existsByOwnerIdAndDocumentNumberAndIdNot(owner.getId(), "AB123456", ana.getId())).isFalse();
+        assertThat(passengerRepository.existsByOwnerIdAndDocumentNumberAndIdNot(owner.getId(), "AB123456", ana.getId() + 1)).isTrue();
     }
 
     @Test
-    void findByNameContainingIgnoreCase_matchesPartialTextIgnoringCase_andPages() {
-        passengerRepository.save(passenger("AB123456", "Ana Souza"));
-        passengerRepository.save(passenger("CD789012", "Mariana Lima"));
-        passengerRepository.save(passenger("EF345678", "John Smith"));
+    void findByOwnerIdAndNameContainingIgnoreCase_matchesPartialTextIgnoringCase_andPages() {
+        AppUser owner = userRepository.save(user("ana@email.com"));
+        passengerRepository.save(passenger(owner, "AB123456", "Ana Souza"));
+        passengerRepository.save(passenger(owner, "CD789012", "Mariana Lima"));
+        passengerRepository.save(passenger(owner, "EF345678", "John Smith"));
 
-        Page<Passenger> firstPage = passengerRepository.findByNameContainingIgnoreCase(
-                "ANA", PageRequest.of(0, 1, Sort.by("name")));
+        Page<Passenger> firstPage = passengerRepository.findByOwnerIdAndNameContainingIgnoreCase(
+                owner.getId(), "ANA", PageRequest.of(0, 1, Sort.by("name")));
 
         assertThat(firstPage.getContent()).extracting(Passenger::getName).containsExactly("Ana Souza");
         assertThat(firstPage.getTotalElements()).isEqualTo(2);
@@ -69,11 +80,61 @@ class PassengerRepositoryTest {
     }
 
     @Test
-    void save_isRejectedByTheDatabase_whenTheDocumentNumberIsDuplicated() {
-        passengerRepository.saveAndFlush(passenger("AB123456"));
+    void findByOwnerId_returnsOnlyThePassengersOfThatAccount() {
+        AppUser ana = userRepository.save(user("ana@email.com"));
+        AppUser bob = userRepository.save(user("bob@email.com"));
+        passengerRepository.save(passenger(ana, "AB123456", "Ana Souza"));
+        passengerRepository.save(passenger(bob, "CD789012", "Bob Stone"));
 
-        assertThatThrownBy(() -> passengerRepository.saveAndFlush(passenger("AB123456")))
+        Page<Passenger> result = passengerRepository.findByOwnerId(ana.getId(), PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).extracting(Passenger::getName).containsExactly("Ana Souza");
+    }
+
+    @Test
+    void findByIdAndOwnerId_doesNotFindAnotherAccountsPassenger() {
+        AppUser ana = userRepository.save(user("ana@email.com"));
+        AppUser bob = userRepository.save(user("bob@email.com"));
+        Passenger anasPassenger = passengerRepository.save(passenger(ana, "AB123456"));
+
+        assertThat(passengerRepository.findByIdAndOwnerId(anasPassenger.getId(), ana.getId())).isPresent();
+        assertThat(passengerRepository.findByIdAndOwnerId(anasPassenger.getId(), bob.getId())).isEmpty();
+    }
+
+    @Test
+    void save_isRejectedByTheDatabase_whenTheOwnerRepeatsADocumentNumber() {
+        AppUser owner = userRepository.save(user("ana@email.com"));
+        passengerRepository.saveAndFlush(passenger(owner, "AB123456"));
+
+        assertThatThrownBy(() -> passengerRepository.saveAndFlush(passenger(owner, "AB123456")))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void save_allowsTheSameDocumentNumberUnderTwoAccounts() {
+        AppUser ana = userRepository.save(user("ana@email.com"));
+        AppUser bob = userRepository.save(user("bob@email.com"));
+        passengerRepository.saveAndFlush(passenger(ana, "AB123456"));
+
+        passengerRepository.saveAndFlush(passenger(bob, "AB123456"));
+
+        assertThat(passengerRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void assignOrphansTo_givesOwnerlessPassengersToTheAccount_andLeavesTheOthers() {
+        AppUser ana = userRepository.save(user("ana@email.com"));
+        AppUser bob = userRepository.save(user("bob@email.com"));
+        Passenger orphan = passengerRepository.save(passenger("AB123456"));
+        Passenger bobs = passengerRepository.save(passenger(bob, "CD789012"));
+        flushAndClear();
+
+        int changed = passengerRepository.assignOrphansTo(ana);
+        flushAndClear();
+
+        assertThat(changed).isEqualTo(1);
+        assertThat(passengerRepository.findById(orphan.getId()).orElseThrow().getOwner().getId()).isEqualTo(ana.getId());
+        assertThat(passengerRepository.findById(bobs.getId()).orElseThrow().getOwner().getId()).isEqualTo(bob.getId());
     }
 
     @Test

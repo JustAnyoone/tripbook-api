@@ -1,5 +1,6 @@
 package com.tt.tripbook;
 
+import com.tt.tripbook.model.AppUser;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
@@ -12,6 +13,28 @@ import java.time.LocalDate;
 public final class TestData {
 
     private TestData() {
+    }
+
+    // An account that can own passengers; the password hash is only a placeholder
+    public static AppUser user(String email) {
+        AppUser user = new AppUser();
+        user.setName("Test User");
+        user.setEmail(email);
+        user.setPasswordHash("not-a-real-hash");
+        return user;
+    }
+
+    // A passenger that belongs to the given account
+    public static Passenger passenger(AppUser owner, String documentNumber) {
+        Passenger passenger = passenger(documentNumber);
+        passenger.setOwner(owner);
+        return passenger;
+    }
+
+    public static Passenger passenger(AppUser owner, String documentNumber, String name) {
+        Passenger passenger = passenger(documentNumber, name);
+        passenger.setOwner(owner);
+        return passenger;
     }
 
     public static Passenger passenger(String documentNumber) {

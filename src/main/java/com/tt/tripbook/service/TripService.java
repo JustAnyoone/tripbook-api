@@ -8,6 +8,7 @@ import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.TripRepository;
+import com.tt.tripbook.security.CurrentUser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,23 +25,28 @@ public class TripService {
     private final PassengerService passengerService;
     private final DestinationService destinationService;
     private final Clock clock;
+    private final CurrentUser currentUser;
 
     public TripService(TripRepository repository,
                        PassengerService passengerService,
                        DestinationService destinationService,
-                       Clock clock) {
+                       Clock clock,
+                       CurrentUser currentUser) {
         this.repository = repository;
         this.passengerService = passengerService;
         this.destinationService = destinationService;
         this.clock = clock;
+        this.currentUser = currentUser;
     }
 
     // Optional status filter (case-insensitive); a null or blank value means "no filter"
     @Transactional(readOnly = true)
     public PageResponse<TripResponse> findAll(String status, Pageable pageable) {
+        // Only the trips of the signed-in account's passengers
+        Long ownerId = currentUser.id();
         Page<Trip> page = (status == null || status.isBlank())
-                ? repository.findAll(pageable)
-                : repository.findByStatus(normalizeStatus(status), pageable);
+                ? repository.findByPassengerOwnerId(ownerId, pageable)
+                : repository.findByPassengerOwnerIdAndStatus(ownerId, normalizeStatus(status), pageable);
         return PageResponse.from(page.map(TripResponse::from));
     }
 
@@ -51,14 +57,17 @@ public class TripService {
 
     @Transactional(readOnly = true)
     public PageResponse<TripResponse> findByPassenger(Long passengerId, Pageable pageable) {
-        passengerService.getEntity(passengerId); // 404 if the passenger does not exist
-        return PageResponse.from(repository.findByPassengerId(passengerId, pageable).map(TripResponse::from));
+        passengerService.getEntity(passengerId); // 404 if the passenger does not exist or is not yours
+        return PageResponse.from(repository.findByPassengerIdAndPassengerOwnerId(passengerId, currentUser.id(), pageable)
+                .map(TripResponse::from));
     }
 
     @Transactional(readOnly = true)
     public PageResponse<TripResponse> findByDestination(Long destinationId, Pageable pageable) {
         destinationService.getEntity(destinationId); // 404 if the destination does not exist
-        return PageResponse.from(repository.findByDestinationId(destinationId, pageable).map(TripResponse::from));
+        // Destinations are shared, but the list only holds the trips of this account
+        return PageResponse.from(repository.findByDestinationIdAndPassengerOwnerId(destinationId, currentUser.id(), pageable)
+                .map(TripResponse::from));
     }
 
     @Transactional
@@ -83,7 +92,7 @@ public class TripService {
     }
 
     private Trip getEntity(Long id) {
-        return repository.findById(id)
+        return repository.findByIdAndPassengerOwnerId(id, currentUser.id())
                 .orElseThrow(() -> new ResourceNotFoundException("Trip not found: id " + id));
     }
 
