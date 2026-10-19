@@ -17,6 +17,7 @@ import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
+import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.TripRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -200,7 +201,7 @@ class TripServiceTest {
         TripResponse response = service.update(1L, request("CANCELLED", LocalDate.of(2026, 12, 30)));
 
         assertThat(response.status()).isEqualTo("CANCELLED");
-        assertThat(existing.getStatus()).isEqualTo("CANCELLED");
+        assertThat(existing.getStatus()).isEqualTo(TripStatus.CANCELLED);
     }
 
     @Test
@@ -237,7 +238,7 @@ class TripServiceTest {
     @Test
     void findAll_withStatus_filtersByTheNormalizedStatus() {
         Pageable pageable = PageRequest.of(0, 10);
-        when(repository.findByStatus("CONFIRMED", pageable))
+        when(repository.findByStatus(TripStatus.CONFIRMED, pageable))
                 .thenReturn(new PageImpl<>(List.of(trip(10L)), pageable, 1));
 
         // Lower case and extra spaces are accepted and normalized
@@ -337,7 +338,7 @@ class TripServiceTest {
         trip.setId(id);
         trip.setDepartureDate(LocalDate.of(2026, 12, 20));
         trip.setPrice(new BigDecimal("1000.00"));
-        trip.setStatus("PENDING");
+        trip.setStatus(TripStatus.PENDING);
         trip.setPassenger(passenger(1L));
         trip.setDestination(destination(1L));
         return trip;
