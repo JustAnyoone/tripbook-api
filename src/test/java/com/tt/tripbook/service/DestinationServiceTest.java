@@ -133,6 +133,39 @@ class DestinationServiceTest {
     }
 
     @Test
+    void create_throwsConflict_whenTheCityAndCountryAlreadyExist() {
+        when(repository.existsByCityIgnoreCaseAndCountryIgnoreCase("Rio de Janeiro", "Brazil")).thenReturn(true);
+
+        // Extra spaces must not hide the duplicate
+        assertThatThrownBy(() -> service.create(new DestinationRequest("  Rio de Janeiro ", "Brazil ", "again")))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Rio de Janeiro");
+
+        verify(repository, never()).save(any(Destination.class));
+    }
+
+    @Test
+    void create_storesTheCityAndCountryTrimmed() {
+        when(repository.save(any(Destination.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DestinationResponse response = service.create(new DestinationRequest("  Tokyo ", " Japan  ", null));
+
+        assertThat(response.city()).isEqualTo("Tokyo");
+        assertThat(response.country()).isEqualTo("Japan");
+    }
+
+    @Test
+    void update_throwsConflict_whenAnotherDestinationHasTheSameCityAndCountry() {
+        when(repository.findById(1L)).thenReturn(Optional.of(destination(1L, "Lisbon", "Portugal")));
+        when(repository.existsByCityIgnoreCaseAndCountryIgnoreCaseAndIdNot("Porto", "Portugal", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(1L, new DestinationRequest("Porto", "Portugal", null)))
+                .isInstanceOf(ConflictException.class);
+
+        verify(repository, never()).save(any(Destination.class));
+    }
+
+    @Test
     void update_throwsNotFound_whenTheDestinationDoesNotExist() {
         when(repository.findById(999L)).thenReturn(Optional.empty());
 

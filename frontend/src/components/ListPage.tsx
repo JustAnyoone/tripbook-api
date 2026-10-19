@@ -31,6 +31,12 @@ export interface FormProps<T, I> {
   onCancel: () => void;
 }
 
+export interface SortOption {
+  /** "field,direction", for example "departureDate,desc" */
+  value: string;
+  label: string;
+}
+
 interface ListPageProps<T extends { id: number }, I> {
   title: string;
   /** Singular name used in buttons and messages, for example "destination" */
@@ -38,7 +44,12 @@ interface ListPageProps<T extends { id: number }, I> {
   nounPlural: string;
   api: Resource<T, I>;
   filter: FilterConfig;
-  columns: Column<T>[];
+  /** Table columns; not needed when `renderCard` is used */
+  columns?: Column<T>[];
+  /** When set, rows render as cards instead of table rows; `actions` holds the Edit and Delete buttons */
+  renderCard?: (item: T, actions: ReactNode) => ReactNode;
+  /** Card layouts have no column headers to click, so sorting is offered as a select */
+  sortOptions?: SortOption[];
   renderForm: (props: FormProps<T, I>) => ReactNode;
   describe: (item: T) => string;
   /** Extra sentence for the delete confirmation, for example what else gets removed */
@@ -58,7 +69,9 @@ export function ListPage<T extends { id: number }, I>({
   nounPlural,
   api,
   filter,
-  columns,
+  columns = [],
+  renderCard,
+  sortOptions,
   renderForm,
   describe,
   deleteNote,
@@ -116,6 +129,24 @@ export function ListPage<T extends { id: number }, I>({
     reload();
   }
 
+  function chooseSort(value: string) {
+    setPage(0);
+    if (!value) return setSort(null);
+    const [field, direction] = value.split(',');
+    setSort({ field, direction: direction === 'desc' ? 'desc' : 'asc' });
+  }
+
+  const actionsFor = (item: T) => (
+    <>
+      <button type="button" className="button button-quiet" onClick={() => setEditing(item)}>
+        Edit
+      </button>
+      <button type="button" className="button button-quiet button-danger-text" onClick={() => setDeleting(item)}>
+        Delete
+      </button>
+    </>
+  );
+
   const hasFilter = filterValue.trim().length > 0;
   const total = data?.totalElements ?? 0;
   const rows = data?.content ?? [];
@@ -156,57 +187,71 @@ export function ListPage<T extends { id: number }, I>({
             />
           )}
         </div>
+        {renderCard && sortOptions && (
+          <div className="field toolbar-field">
+            <label htmlFor="list-sort">Sort by</label>
+            <select id="list-sort" value={sort ? `${sort.field},${sort.direction}` : ''} onChange={(event) => chooseSort(event.target.value)}>
+              <option value="">Default order</option>
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {error && <ErrorBanner message={error} onRetry={reload} />}
 
-      <div className="table-wrap" aria-busy={loading}>
-        <table>
-          <thead>
-            <tr>
-              {columns.map((column) => {
-                const active = sort?.field === column.sortField;
-                const ariaSort = !column.sortField ? undefined : active ? (sort?.direction === 'asc' ? 'ascending' : 'descending') : 'none';
-                return (
-                  <th key={column.key} scope="col" aria-sort={ariaSort} className={column.align === 'end' ? 'cell-end' : undefined}>
-                    {column.sortField ? (
-                      <button type="button" className="sort-button" onClick={() => toggleSort(column.sortField!)}>
-                        {column.header}
-                        <span className="sort-indicator" aria-hidden="true">
-                          {active ? (sort?.direction === 'asc' ? '▲' : '▼') : ''}
-                        </span>
-                      </button>
-                    ) : (
-                      column.header
-                    )}
-                  </th>
-                );
-              })}
-              <th scope="col">
-                <span className="visually-hidden">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className={loading ? 'is-loading' : undefined}>
+      <div className={renderCard ? 'card-list-wrap' : 'table-wrap'} aria-busy={loading}>
+        {renderCard ? (
+          <ul className={`card-list${loading ? ' is-loading' : ''}`}>
             {rows.map((item) => (
-              <tr key={item.id}>
-                {columns.map((column) => (
-                  <td key={column.key} className={column.align === 'end' ? 'cell-end' : undefined}>
-                    {column.render(item)}
-                  </td>
-                ))}
-                <td className="cell-actions">
-                  <button type="button" className="button button-quiet" onClick={() => setEditing(item)}>
-                    Edit
-                  </button>
-                  <button type="button" className="button button-quiet button-danger-text" onClick={() => setDeleting(item)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
+              <li key={item.id}>{renderCard(item, actionsFor(item))}</li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                {columns.map((column) => {
+                  const active = sort?.field === column.sortField;
+                  const ariaSort = !column.sortField ? undefined : active ? (sort?.direction === 'asc' ? 'ascending' : 'descending') : 'none';
+                  return (
+                    <th key={column.key} scope="col" aria-sort={ariaSort} className={column.align === 'end' ? 'cell-end' : undefined}>
+                      {column.sortField ? (
+                        <button type="button" className="sort-button" onClick={() => toggleSort(column.sortField!)}>
+                          {column.header}
+                          <span className="sort-indicator" aria-hidden="true">
+                            {active ? (sort?.direction === 'asc' ? '▲' : '▼') : ''}
+                          </span>
+                        </button>
+                      ) : (
+                        column.header
+                      )}
+                    </th>
+                  );
+                })}
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className={loading ? 'is-loading' : undefined}>
+              {rows.map((item) => (
+                <tr key={item.id}>
+                  {columns.map((column) => (
+                    <td key={column.key} className={column.align === 'end' ? 'cell-end' : undefined}>
+                      {column.render(item)}
+                    </td>
+                  ))}
+                  <td className="cell-actions">{actionsFor(item)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
         {!data && loading && <p className="table-message">Loading {nounPlural}…</p>}
         {data && rows.length === 0 && !loading && (

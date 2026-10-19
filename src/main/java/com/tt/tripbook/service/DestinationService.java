@@ -40,6 +40,11 @@ public class DestinationService {
 
     @Transactional
     public DestinationResponse create(DestinationRequest request) {
+        String city = request.city().trim();
+        String country = request.country().trim();
+        if (repository.existsByCityIgnoreCaseAndCountryIgnoreCase(city, country)) {
+            throw duplicate(city, country);
+        }
         Destination destination = new Destination();
         apply(request, destination);
         return DestinationResponse.from(repository.save(destination));
@@ -48,6 +53,11 @@ public class DestinationService {
     @Transactional
     public DestinationResponse update(Long id, DestinationRequest request) {
         Destination destination = getEntity(id);
+        String city = request.city().trim();
+        String country = request.country().trim();
+        if (repository.existsByCityIgnoreCaseAndCountryIgnoreCaseAndIdNot(city, country, id)) {
+            throw duplicate(city, country);
+        }
         apply(request, destination);
         return DestinationResponse.from(repository.save(destination));
     }
@@ -69,8 +79,13 @@ public class DestinationService {
     }
 
     private void apply(DestinationRequest request, Destination destination) {
-        destination.setCity(request.city());
-        destination.setCountry(request.country());
+        // Stored trimmed, so "Rio " and "Rio" can never become two different destinations
+        destination.setCity(request.city().trim());
+        destination.setCountry(request.country().trim());
         destination.setDescription(request.description());
+    }
+
+    private ConflictException duplicate(String city, String country) {
+        return new ConflictException("Destination already exists: " + city + ", " + country);
     }
 }

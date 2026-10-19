@@ -1,9 +1,34 @@
 // The API sends dates as "yyyy-MM-dd". They are parsed by hand: new Date("2026-12-20")
 // is read as UTC midnight and can show up as the previous day in time zones behind UTC.
 
-function parse(iso: string): Date {
+export function parse(iso: string): Date {
   const [year, month, day] = iso.split('-').map(Number);
   return new Date(year, month - 1, day);
+}
+
+// A local Date as "yyyy-MM-dd"
+export function toIso(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+// Calendar arithmetic on ISO dates; Date handles the month and year rollovers
+export function addDays(iso: string, days: number): string {
+  const date = parse(iso);
+  date.setDate(date.getDate() + days);
+  return toIso(date);
+}
+
+// Moves by whole months and keeps the day inside the target month (31 Jan + 1 month = 28 Feb)
+export function addMonths(iso: string, months: number): string {
+  const date = parse(iso);
+  const day = date.getDate();
+  date.setDate(1);
+  date.setMonth(date.getMonth() + months);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(day, lastDay));
+  return toIso(date);
 }
 
 const formatter = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -31,9 +56,7 @@ export function formatPrice(value: number): string {
 
 // Today as "yyyy-MM-dd" in the user's own time zone (toISOString would give the UTC day)
 export function todayIso(now: Date = new Date()): string {
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${month}-${day}`;
+  return toIso(now);
 }
 
 // True only for dates that exist: 2026-11-31 and 2027-02-29 are rejected
