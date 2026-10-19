@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatNights, formatPrice, isRealDate, nightsBetween, todayIso, validateTripDates } from './dates';
+import { addDays, addMonths, formatDate, formatNights, formatPrice, isRealDate, nightsBetween, todayIso, validateTripDates } from './dates';
 
 describe('dates', () => {
   it('formats the day that was sent, whatever the time zone', () => {
@@ -73,5 +73,17 @@ describe('date rules', () => {
     expect(validateTripDates({ departureDate: '2026-09-02', returnDate: '2026-09-10' }, today, initial)).toBe(
       'Departure date cannot be in the past.',
     );
+  });
+
+  it('adds days across month and year boundaries', () => {
+    expect(addDays('2026-10-31', 1)).toBe('2026-11-01');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+  });
+
+  it('adds months and keeps the day inside the shorter month', () => {
+    expect(addMonths('2026-01-31', 1)).toBe('2026-02-28');
+    expect(addMonths('2026-12-15', 1)).toBe('2027-01-15');
+    expect(addMonths('2026-03-31', -1)).toBe('2026-02-28');
   });
 });

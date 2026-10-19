@@ -15,11 +15,14 @@ The project started as a university assignment (Object-Oriented Programming, CEU
 - Each trip links one passenger to one destination
 - Business rules: dates must be real calendar dates (no 31 November), a trip cannot start or end in the past, the return date cannot be before the departure date, and the passenger and destination must exist. Editing a trip keeps its dates even after they have passed, so a trip that already happened can still be corrected
 - A destination that still has trips cannot be deleted; deleting a passenger also deletes their trips
+- A destination (city and country, ignoring letter case and extra spaces) can be registered only once; a repeat returns `409`
 - Pagination, sorting and filtering on every list endpoint
 - Accounts with sign-up and sign-in: passwords stored as BCrypt hashes, stateless JWT access tokens, every `/api` route protected except register and login
 - Input validation with clear error messages and a single, consistent error format
 - Interactive API documentation with Swagger UI
-- React + TypeScript front-end with sign-in and sign-up pages, paginated, filterable and sortable tables and forms for every resource
+- React + TypeScript front-end: trips shown as boarding passes, sign-in styled as a check-in pass, paginated, filterable and sortable lists and forms for every resource
+- Dates are picked from a calendar (never typed); days before today, and return days before the departure, cannot be chosen
+- Light and dark themes: follows the operating system by default, with a toggle that remembers the choice
 - Automated tests on both sides (back-end: unit, web layer, repository and end-to-end; front-end: components and API client) running on every push through GitHub Actions
 
 ## Tech stack

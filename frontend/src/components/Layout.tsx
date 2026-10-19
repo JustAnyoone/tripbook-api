@@ -1,17 +1,18 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Mark } from './Mark';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Layout() {
   const { user, logout } = useAuth();
   return (
     <div className="shell">
-      <aside className="rail">
+      <header className="topbar">
         <div className="brand">
           <Mark />
           <span className="brand-name">TripBook</span>
         </div>
-        <nav aria-label="Main">
+        <nav aria-label="Main" className="topnav">
           <ul className="nav">
             <li>
               <NavLink to="/trips">Trips</NavLink>
@@ -25,14 +26,15 @@ export function Layout() {
           </ul>
         </nav>
         <div className="account">
+          <ThemeToggle />
           <span className="account-name" title={user?.email}>
             {user?.name}
           </span>
-          <button type="button" className="button button-rail" onClick={logout}>
+          <button type="button" className="button button-outline" onClick={logout}>
             Sign out
           </button>
         </div>
-      </aside>
+      </header>
       <main className="content">
         <Outlet />
       </main>

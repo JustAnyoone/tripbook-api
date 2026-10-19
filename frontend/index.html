@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TripBook</title>
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Set the theme before the first paint so a dark-mode user never sees a white flash
+      (function () {
+        var theme = null;
+        try { theme = localStorage.getItem('tripbook.theme'); } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

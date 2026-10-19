@@ -47,4 +47,22 @@ class DestinationRepositoryTest {
         assertThat(secondPage.getTotalPages()).isEqualTo(2);
         assertThat(secondPage.isLast()).isTrue();
     }
+
+    @Test
+    void existsByCityAndCountry_ignoresLetterCase() {
+        repository.save(destination("Rio de Janeiro", "Brazil"));
+
+        assertThat(repository.existsByCityIgnoreCaseAndCountryIgnoreCase("RIO DE JANEIRO", "brazil")).isTrue();
+        assertThat(repository.existsByCityIgnoreCaseAndCountryIgnoreCase("Rio de Janeiro", "Portugal")).isFalse();
+    }
+
+    @Test
+    void existsByCityAndCountryAndIdNot_excludesTheDestinationItself() {
+        Destination rio = repository.save(destination("Rio de Janeiro", "Brazil"));
+
+        assertThat(repository.existsByCityIgnoreCaseAndCountryIgnoreCaseAndIdNot(
+                "Rio de Janeiro", "Brazil", rio.getId())).isFalse();
+        assertThat(repository.existsByCityIgnoreCaseAndCountryIgnoreCaseAndIdNot(
+                "Rio de Janeiro", "Brazil", rio.getId() + 1)).isTrue();
+    }
 }

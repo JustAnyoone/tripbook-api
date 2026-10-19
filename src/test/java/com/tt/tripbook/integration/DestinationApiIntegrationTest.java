@@ -2,6 +2,7 @@ package com.tt.tripbook.integration;
 
 import static com.tt.tripbook.TestData.destination;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -117,6 +119,19 @@ class DestinationApiIntegrationTest {
         mockMvc.perform(get("/api/destinations").param("size", "1000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(100));
+    }
+
+    @Test
+    void postDestination_returns409_whenTheSameCityAndCountryAlreadyExist() throws Exception {
+        String body = "{\"city\":\"Rio de Janeiro\",\"country\":\"Brazil\",\"description\":\"Beaches\"}";
+        mockMvc.perform(post("/api/destinations").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+
+        // Same place with different letter case and stray spaces is still a duplicate
+        String duplicate = "{\"city\":\" rio de janeiro \",\"country\":\"BRAZIL\"}";
+        mockMvc.perform(post("/api/destinations").contentType(MediaType.APPLICATION_JSON).content(duplicate))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Destination already exists: rio de janeiro, BRAZIL"));
     }
 
     private void saveFiveCities() {

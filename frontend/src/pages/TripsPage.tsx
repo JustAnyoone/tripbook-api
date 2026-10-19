@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { destinationsApi, messageOf, passengersApi, tripsApi } from '../api/client';
 import { TRIP_STATUSES, type Destination, type Passenger, type Trip, type TripInput, type TripStatus } from '../api/types';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Field, FormShell } from '../components/FormShell';
-import { ListPage, type Column, type FormProps } from '../components/ListPage';
+import { DatePicker } from '../components/DatePicker';
+import { ListPage, type FormProps, type SortOption } from '../components/ListPage';
 import { formatDate, formatNights, formatPrice, nightsBetween, todayIso, validateTripDates } from '../lib/dates';
 
 const STATUS_LABELS: Record<TripStatus, string> = {
@@ -12,47 +13,64 @@ const STATUS_LABELS: Record<TripStatus, string> = {
   CANCELLED: 'Cancelled',
 };
 
-// Departure, return and length of the stay on one line: the thing people scan a trip list for
-function Itinerary({ trip }: { trip: Trip }) {
-  const nights = nightsBetween(trip.departureDate, trip.returnDate);
-  return (
-    <div className="itinerary">
-      <span className="tabular">{formatDate(trip.departureDate)}</span>
-      <span className="itinerary-line" aria-hidden="true" />
-      <span className="tabular">{trip.returnDate ? formatDate(trip.returnDate) : 'Open return'}</span>
-      <span className="itinerary-nights muted">{nights === null ? 'No return date' : formatNights(nights)}</span>
-    </div>
-  );
-}
-
 function StatusBadge({ status }: { status: TripStatus }) {
   return <span className={`status status-${status.toLowerCase()}`}>{STATUS_LABELS[status]}</span>;
 }
 
-const columns: Column<Trip>[] = [
-  { key: 'itinerary', header: 'Itinerary', sortField: 'departureDate', render: (t) => <Itinerary trip={t} /> },
-  {
-    key: 'passenger',
-    header: 'Passenger',
-    render: (t) => (
-      <>
-        <strong>{t.passenger.name}</strong>
-        <span className="cell-sub muted">{t.passenger.email}</span>
-      </>
-    ),
-  },
-  {
-    key: 'destination',
-    header: 'Destination',
-    render: (t) => (
-      <>
-        <strong>{t.destination.city}</strong>
-        <span className="cell-sub muted">{t.destination.country}</span>
-      </>
-    ),
-  },
-  { key: 'price', header: 'Price', sortField: 'price', align: 'end', render: (t) => <span className="tabular">{formatPrice(t.price)}</span> },
-  { key: 'status', header: 'Status', sortField: 'status', render: (t) => <StatusBadge status={t.status} /> },
+// Departure and return joined by a dashed route, with the length of the stay underneath
+function Route({ trip }: { trip: Trip }) {
+  const nights = nightsBetween(trip.departureDate, trip.returnDate);
+  return (
+    <div className="pass-route">
+      <div>
+        <span className="pass-small muted">Departs</span>
+        <strong className="tabular">{formatDate(trip.departureDate)}</strong>
+      </div>
+      <span className="pass-route-line" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18">
+          <path d="M16.2 8.1 2.6 3.2c-.5-.2-1 .3-.8.8l2 4.1-1.9.9v1.8l3.1-.4 1.5 3.6h1.6l-.4-3.7 6.1-.9 1.8 1.4c.4.3 1 .1 1.2-.4l.1-.4c.1-.4-.1-.7-.4-.9l-2.1-1.3.1-.6c0-.3-.1-.6-.5-.6Z" fill="currentColor" />
+        </svg>
+      </span>
+      <div className="pass-route-end">
+        <span className="pass-small muted">Returns</span>
+        <strong className="tabular">{trip.returnDate ? formatDate(trip.returnDate) : 'Open return'}</strong>
+      </div>
+      <p className="pass-nights muted">{nights === null ? 'No return date' : formatNights(nights)}</p>
+    </div>
+  );
+}
+
+// One trip as a boarding pass: the coloured strip carries the status, the stub carries price and actions
+function BoardingPass({ trip, actions }: { trip: Trip; actions: ReactNode }) {
+  return (
+    <article className={`pass pass-${trip.status.toLowerCase()}`}>
+      <div className="pass-main">
+        <p className="pass-passenger">
+          <span className="pass-small muted">Passenger</span>
+          <strong>{trip.passenger.name}</strong>
+        </p>
+        <h2 className="pass-destination">{trip.destination.city}</h2>
+        <p className="pass-country muted">{trip.destination.country}</p>
+        <Route trip={trip} />
+      </div>
+      <div className="pass-stub">
+        <div>
+          <span className="pass-small muted">Price</span>
+          <strong className="pass-price tabular">{formatPrice(trip.price)}</strong>
+        </div>
+        <StatusBadge status={trip.status} />
+        <span className="pass-barcode" aria-hidden="true" />
+        <div className="pass-actions">{actions}</div>
+      </div>
+    </article>
+  );
+}
+
+const SORT_OPTIONS: SortOption[] = [
+  { value: 'departureDate,desc', label: 'Departure, latest first' },
+  { value: 'departureDate,asc', label: 'Departure, earliest first' },
+  { value: 'price,desc', label: 'Price, highest first' },
+  { value: 'price,asc', label: 'Price, lowest first' },
 ];
 
 // The selects offer the first 100 passengers and destinations, by name
@@ -111,12 +129,15 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
   if (!passengers || !destinations) return <p className="dialog-text">Loading passengers and destinations…</p>;
 
   const today = todayIso();
-  // An unchanged date of an existing trip may already be in the past; any new date may not
-  const minDeparture = departureDate === initial?.departureDate ? undefined : today;
-  const minReturn = [departureDate, returnDate === initial?.returnDate ? undefined : today]
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .at(-1);
+  // Dates are picked from the calendar, never typed. Nothing before today can be chosen, and the
+  // return day cannot come before the departure day. (An unchanged date of an old trip stays valid.)
+  const minReturn = departureDate && departureDate > today ? departureDate : today;
+
+  function chooseDeparture(value: string) {
+    setDepartureDate(value);
+    // A return that now falls before the new departure would be invalid, so ask for it again
+    if (returnDate && value && returnDate < value) setReturnDate('');
+  }
 
   const missingData = passengers.length === 0 || destinations.length === 0;
 
@@ -124,6 +145,7 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
     <FormShell
       submitLabel={initial ? 'Save changes' : 'Add trip'}
       onSubmit={async () => {
+        if (!departureDate) throw new Error('Choose a departure date.');
         const problem = validateTripDates({ departureDate, returnDate: returnDate || null }, today, initial ?? undefined);
         if (problem) throw new Error(problem);
         await onSubmit({
@@ -164,10 +186,10 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
       </Field>
       <div className="field-row">
         <Field label="Departure date">
-          {(id) => <input id={id} type="date" value={departureDate} min={minDeparture} onChange={(e) => setDepartureDate(e.target.value)} required />}
+          {(id) => <DatePicker id={id} value={departureDate} min={today} onChange={chooseDeparture} />}
         </Field>
         <Field label="Return date" hint="Optional">
-          {(id) => <input id={id} type="date" value={returnDate} min={minReturn} onChange={(e) => setReturnDate(e.target.value)} />}
+          {(id) => <DatePicker id={id} value={returnDate} min={minReturn} onChange={setReturnDate} clearable placeholder="No return date" />}
         </Field>
       </div>
       <div className="field-row">
@@ -202,7 +224,8 @@ export function TripsPage() {
         param: 'status',
         options: TRIP_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] })),
       }}
-      columns={columns}
+      renderCard={(trip, actions) => <BoardingPass trip={trip} actions={actions} />}
+      sortOptions={SORT_OPTIONS}
       renderForm={(props) => <TripForm {...props} />}
       describe={(t) => `the trip of ${t.passenger.name} to ${t.destination.city}`}
       emptyHint="Book the first one once you have a passenger and a destination."

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { ThemeProvider } from '../theme/theme';
 import { AuthProvider } from './AuthContext';
 import { getToken, saveToken } from './token';
 
@@ -28,9 +29,11 @@ function stubApi(handler: Handler = () => respond(200, emptyPage)) {
 function renderApp(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
