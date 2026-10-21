@@ -4,12 +4,24 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatePicker } from './DatePicker';
 
-function Harness({ initial = '', min, clearable = false }: { initial?: string; min?: string; clearable?: boolean }) {
+function Harness({
+  initial = '',
+  min,
+  max,
+  jump = false,
+  clearable = false,
+}: {
+  initial?: string;
+  min?: string;
+  max?: string;
+  jump?: boolean;
+  clearable?: boolean;
+}) {
   const [value, setValue] = useState(initial);
   return (
     <>
       <label htmlFor="when">When</label>
-      <DatePicker id="when" value={value} onChange={setValue} min={min} clearable={clearable} />
+      <DatePicker id="when" value={value} onChange={setValue} min={min} max={max} jump={jump} clearable={clearable} />
       <output data-testid="value">{value}</output>
     </>
   );
@@ -119,5 +131,28 @@ describe('DatePicker', () => {
     await user.click(screen.getByRole('button', { name: 'Clear' }));
 
     expect(screen.getByTestId('value')).toHaveTextContent('');
+  });
+
+  it('does not allow days after max and opens on the latest allowed day', async () => {
+    const user = userEvent.setup();
+    render(<Harness max="2026-10-18" />);
+
+    await user.click(screen.getByLabelText('When'));
+
+    expect(screen.getByRole('button', { name: 'Saturday, October 17, 2026' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Monday, October 19, 2026' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled();
+  });
+
+  it('jumps to another year and month with the selects', async () => {
+    const user = userEvent.setup();
+    render(<Harness max="2026-10-18" jump />);
+
+    await user.click(screen.getByLabelText('When'));
+    await user.selectOptions(screen.getByLabelText('Year'), '1990');
+    await user.selectOptions(screen.getByLabelText('Month'), 'March');
+    await user.click(screen.getByRole('button', { name: 'Thursday, March 15, 1990' }));
+
+    expect(screen.getByTestId('value')).toHaveTextContent('1990-03-15');
   });
 });

@@ -1,11 +1,15 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { DestinationsIcon, PassengersIcon, TripsIcon } from './icons';
+import { RefreshProvider } from './RefreshContext';
+import { SampleDataButton } from './SampleDataButton';
 import { Mark } from './Mark';
 import { ThemeToggle } from './ThemeToggle';
 
 export function Layout() {
   const { user, logout } = useAuth();
   return (
+    <RefreshProvider>
     <div className="shell">
       <header className="topbar">
         <div className="brand">
@@ -15,17 +19,27 @@ export function Layout() {
         <nav aria-label="Main" className="topnav">
           <ul className="nav">
             <li>
-              <NavLink to="/trips">Trips</NavLink>
+              <NavLink to="/trips">
+                <TripsIcon />
+                Trips
+              </NavLink>
             </li>
             <li>
-              <NavLink to="/passengers">Passengers</NavLink>
+              <NavLink to="/passengers">
+                <PassengersIcon />
+                Passengers
+              </NavLink>
             </li>
             <li>
-              <NavLink to="/destinations">Destinations</NavLink>
+              <NavLink to="/destinations">
+                <DestinationsIcon />
+                Destinations
+              </NavLink>
             </li>
           </ul>
         </nav>
         <div className="account">
+          <SampleDataButton />
           <ThemeToggle />
           <span className="account-name" title={user?.email}>
             {user?.name}
@@ -39,5 +53,6 @@ export function Layout() {
         <Outlet />
       </main>
     </div>
+    </RefreshProvider>
   );
 }

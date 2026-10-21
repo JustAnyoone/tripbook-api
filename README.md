@@ -36,6 +36,10 @@ The images below use sample data.
 - Interactive API documentation with Swagger UI
 - React + TypeScript front-end: trips shown as boarding passes, sign-in styled as a check-in pass, paginated, filterable and sortable lists and forms for every resource
 - Dates are picked from a calendar (never typed); days before today, and return days before the departure, cannot be chosen
+- The passenger birth date uses the same calendar, with month and year selects for dates far in the past; only days before today can be chosen
+- Destination countries are chosen from a searchable list (English or Portuguese names) and shown with their flag, in the destinations table and on every boarding pass
+- Navigation icons for Trips, Passengers and Destinations, and a plane on the boarding pass route line
+- A "Sample data" button adds example destinations, passengers and trips to the signed-in account; running it again adds nothing
 - Light and dark themes: follows the operating system by default, with a toggle that remembers the choice
 - Automated tests on both sides (back-end: unit, web layer, repository and end-to-end; front-end: components and API client) running on every push through GitHub Actions
 
@@ -349,7 +353,7 @@ cd frontend
 npm test
 ```
 
-Vitest and Testing Library cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse and keyboard), the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
+Vitest and Testing Library (78 tests) cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse, keyboard, max date, month and year jump), the country list and flags, the sample data loader, the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
 
 GitHub Actions runs both suites, and builds the front-end, on every push and pull request (`.github/workflows/ci.yml`).
 

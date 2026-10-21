@@ -6,6 +6,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { Dialog } from './Dialog';
 import { ErrorBanner } from './ErrorBanner';
 import { Pagination } from './Pagination';
+import { useRefresh } from './RefreshContext';
 
 export interface Column<T> {
   key: string;
@@ -84,6 +85,7 @@ export function ListPage<T extends { id: number }, I>({
   const [editing, setEditing] = useState<T | 'new' | null>(null);
   const [deleting, setDeleting] = useState<T | null>(null);
 
+  const { version: dataVersion } = useRefresh();
   const filterValue = useDebounced(filterInput, 300);
 
   const { data, loading, error, reload } = useList(
@@ -94,7 +96,7 @@ export function ListPage<T extends { id: number }, I>({
         sort: sort ? `${sort.field},${sort.direction}` : undefined,
         filter: { [filter.param]: filterValue },
       }),
-    [api, page, size, sort, filterValue, filter.param],
+    [api, page, size, sort, filterValue, filter.param, dataVersion],
   );
 
   // After deleting the last row of the last page, step back instead of showing an empty page
