@@ -63,7 +63,7 @@ Client -> Controller -> Service -> Repository -> Hibernate/JPA -> MySQL
 |---------------|--------------------------------------------------------------|----------------------------------------------|
 | `Passenger`   | name, documentNumber (unique per account), email, birthDate  | Belongs to one account; has many trips       |
 | `Destination` | city, country, description                                   | One destination is used by many trips        |
-| `Trip`        | departureDate, returnDate, price, status                     | Belongs to one passenger and one destination |
+| `Trip`        | departureDate, returnDate, price, currency, status                     | Belongs to one passenger and one destination |
 | `AppUser`     | name, email (unique), passwordHash                           | Account used to sign in; owns passengers (and through them, trips) |
 
 Modeling notes:
@@ -74,7 +74,7 @@ Modeling notes:
 - Removing a passenger removes their trips (`cascade` and `orphanRemoval`), because a trip cannot exist without its passenger.
 - A destination with trips cannot be removed (HTTP 409). The foreign key enforces the same rule at the database level.
 - `status` is a Java `enum` (`TripStatus`) stored as text and accepts only `PENDING`, `CONFIRMED` or `CANCELLED`.
-- `price` is a `BigDecimal`, which is the right type for money.
+- `price` is a `BigDecimal`, which is the right type for money. Each trip has a `currency` (`BRL`, `USD` or `EUR`; `BRL` when omitted, which is also what trips created before the field existed get). Amounts are stored as typed and never converted, so sorting by price across different currencies compares raw numbers.
 
 ## Getting started
 
@@ -280,6 +280,7 @@ Create a trip (`POST /api/trips`). Send only the ids of the passenger and the de
   "departureDate": "2026-12-20",
   "returnDate": "2026-12-30",
   "price": 3500.50,
+  "currency": "BRL",
   "status": "CONFIRMED",
   "passengerId": 1,
   "destinationId": 1

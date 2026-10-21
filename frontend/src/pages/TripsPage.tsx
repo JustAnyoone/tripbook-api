@@ -1,11 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { destinationsApi, messageOf, passengersApi, tripsApi } from '../api/client';
-import { TRIP_STATUSES, type Destination, type Passenger, type Trip, type TripInput, type TripStatus } from '../api/types';
+import { CURRENCIES, TRIP_STATUSES, type Currency, type Destination, type Passenger, type Trip, type TripInput, type TripStatus } from '../api/types';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Field, FormShell } from '../components/FormShell';
 import { DatePicker } from '../components/DatePicker';
 import { ListPage, type FormProps, type SortOption } from '../components/ListPage';
 import { formatDate, formatNights, formatPrice, nightsBetween, todayIso, validateTripDates } from '../lib/dates';
+
+const CURRENCY_LABELS: Record<Currency, string> = {
+  BRL: 'BRL, Brazilian real',
+  USD: 'USD, US dollar',
+  EUR: 'EUR, euro',
+};
 
 const STATUS_LABELS: Record<TripStatus, string> = {
   PENDING: 'Pending',
@@ -56,7 +62,7 @@ function BoardingPass({ trip, actions }: { trip: Trip; actions: ReactNode }) {
       <div className="pass-stub">
         <div>
           <span className="pass-small muted">Price</span>
-          <strong className="pass-price tabular">{formatPrice(trip.price)}</strong>
+          <strong className="pass-price tabular">{formatPrice(trip.price, trip.currency)}</strong>
         </div>
         <StatusBadge status={trip.status} />
         <span className="pass-barcode" aria-hidden="true" />
@@ -91,6 +97,7 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
   const [departureDate, setDepartureDate] = useState(initial?.departureDate ?? '');
   const [returnDate, setReturnDate] = useState(initial?.returnDate ?? '');
   const [price, setPrice] = useState(initial ? String(initial.price) : '');
+  const [currency, setCurrency] = useState<Currency>(initial?.currency ?? 'BRL');
   const [status, setStatus] = useState<TripStatus>(initial?.status ?? 'PENDING');
 
   useEffect(() => {
@@ -152,6 +159,7 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
           departureDate,
           returnDate: returnDate || null,
           price: Number(price),
+          currency,
           status,
           passengerId: Number(passengerId),
           destinationId: Number(destinationId),
@@ -193,21 +201,32 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
         </Field>
       </div>
       <div className="field-row">
-        <Field label="Price">
-          {(id) => <input id={id} type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />}
-        </Field>
-        <Field label="Status">
+        <Field label="Currency">
           {(id) => (
-            <select id={id} value={status} onChange={(e) => setStatus(e.target.value as TripStatus)}>
-              {TRIP_STATUSES.map((value) => (
+            <select id={id} value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
+              {CURRENCIES.map((value) => (
                 <option key={value} value={value}>
-                  {STATUS_LABELS[value]}
+                  {CURRENCY_LABELS[value]}
                 </option>
               ))}
             </select>
           )}
         </Field>
+        <Field label="Price">
+          {(id) => <input id={id} type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />}
+        </Field>
       </div>
+      <Field label="Status">
+        {(id) => (
+          <select id={id} value={status} onChange={(e) => setStatus(e.target.value as TripStatus)}>
+            {TRIP_STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {STATUS_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
     </FormShell>
   );
 }

@@ -5,6 +5,7 @@ import com.tt.tripbook.dto.TripRequest;
 import com.tt.tripbook.dto.TripResponse;
 import com.tt.tripbook.exception.BusinessRuleException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
+import com.tt.tripbook.model.Currency;
 import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.TripRepository;
@@ -130,6 +131,8 @@ public class TripService {
         trip.setPrice(request.price());
         // The request validation already guarantees one of the enum names
         trip.setStatus(TripStatus.valueOf(request.status()));
+        // An omitted currency means BRL, so clients written before the field existed keep working
+        trip.setCurrency(request.currency() == null ? Currency.BRL : Currency.valueOf(request.currency()));
         trip.setPassenger(passengerService.getEntity(request.passengerId()));
         trip.setDestination(destinationService.getEntity(request.destinationId()));
     }

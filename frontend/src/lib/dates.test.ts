@@ -25,8 +25,13 @@ describe('dates', () => {
     expect(formatNights(3)).toBe('3 nights');
   });
 
-  it('formats prices with two decimals', () => {
-    expect(formatPrice(3500.5)).toBe('3,500.50');
+  it('writes each currency the way its own country does', () => {
+    // Intl separates the symbol with a non-breaking space; normalise it so the expectations read plainly
+    const plain = (text: string) => text.replace(/\u00a0/g, ' ');
+    expect(plain(formatPrice(3500.5, 'BRL'))).toBe('R$ 3.500,50');
+    expect(plain(formatPrice(3500.5, 'USD'))).toBe('$3,500.50');
+    expect(plain(formatPrice(3500.5, 'EUR'))).toBe('3.500,50 €');
+    expect(plain(formatPrice(3500.5))).toBe('R$ 3.500,50');
   });
 });
 

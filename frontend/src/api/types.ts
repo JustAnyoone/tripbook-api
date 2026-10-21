@@ -28,6 +28,10 @@ export interface PassengerInput {
   birthDate: string | null;
 }
 
+export type Currency = 'BRL' | 'USD' | 'EUR';
+
+export const CURRENCIES: Currency[] = ['BRL', 'USD', 'EUR'];
+
 export type TripStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 
 export const TRIP_STATUSES: TripStatus[] = ['PENDING', 'CONFIRMED', 'CANCELLED'];
@@ -37,6 +41,7 @@ export interface Trip {
   departureDate: string;
   returnDate: string | null;
   price: number;
+  currency: Currency;
   status: TripStatus;
   passenger: Passenger;
   destination: Destination;
@@ -46,6 +51,7 @@ export interface TripInput {
   departureDate: string;
   returnDate: string | null;
   price: number;
+  currency: Currency;
   status: TripStatus;
   passengerId: number;
   destinationId: number;

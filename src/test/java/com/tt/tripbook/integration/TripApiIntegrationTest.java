@@ -160,6 +160,32 @@ class TripApiIntegrationTest {
     }
 
     @Test
+    void postTrip_storesTheCurrency_andDefaultsToBrl() throws Exception {
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+
+        // No currency in the body: BRL
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson(ana.getId(), lisbon.getId(), "2026-12-30")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.currency").value("BRL"));
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson(ana.getId(), lisbon.getId(), "2026-12-30")
+                                .replace("\"price\": 3500.50,", "\"price\": 3500.50, \"currency\": \"EUR\",")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.currency").value("EUR"));
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson(ana.getId(), lisbon.getId(), "2026-12-30")
+                                .replace("\"price\": 3500.50,", "\"price\": 3500.50, \"currency\": \"JPY\",")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void postTrip_returns404_andSavesNothing_whenThePassengerDoesNotExist() throws Exception {
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
 

@@ -96,6 +96,17 @@ class TripControllerTest {
     }
 
     @Test
+    void create_returns400_whenTheCurrencyIsNotSupported() throws Exception {
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TRIP.replace("\"price\": 3500.50,", "\"price\": 3500.50, \"currency\": \"JPY\",")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("currency: currency must be BRL, USD or EUR"));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void create_returns400_whenThePriceIsNegative() throws Exception {
         mockMvc.perform(post("/api/trips")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -266,6 +277,7 @@ class TripControllerTest {
                 LocalDate.of(2026, 12, 20),
                 LocalDate.of(2026, 12, 30),
                 new BigDecimal("3500.50"),
+                "BRL",
                 "CONFIRMED",
                 new PassengerResponse(1L, "Ana Souza", "AB123456", "ana@email.com", LocalDate.of(1998, 5, 20)),
                 new DestinationResponse(1L, "Lisbon", "Portugal", "Portuguese capital"));

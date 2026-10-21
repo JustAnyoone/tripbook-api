@@ -36,5 +36,10 @@ public record TripRequest(
 
         @Schema(example = "1")
         @NotNull(message = "destinationId is required")
-        Long destinationId) {
+        Long destinationId,
+
+        @Schema(example = "BRL", allowableValues = {"BRL", "USD", "EUR"},
+                description = "Optional. The currency of the price; BRL when omitted")
+        @Pattern(regexp = "BRL|USD|EUR", message = "currency must be BRL, USD or EUR")
+        String currency) {
 }
