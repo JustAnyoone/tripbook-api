@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -14,11 +15,13 @@ import com.tt.tripbook.dto.TripRequest;
 import com.tt.tripbook.dto.TripResponse;
 import com.tt.tripbook.exception.BusinessRuleException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
+import com.tt.tripbook.model.AppUser;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.TripRepository;
+import com.tt.tripbook.security.CurrentUser;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -49,6 +52,11 @@ class TripServiceTest {
     @Mock
     private DestinationService destinationService;
 
+    @Mock
+    private CurrentUser currentUser;
+
+    private static final Long OWNER_ID = 7L;
+
     // "Today" is frozen at 2026-10-17, so the date rules are tested the same way on any day
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-17T12:00:00Z"), ZoneOffset.UTC);
 
@@ -56,7 +64,11 @@ class TripServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TripService(repository, passengerService, destinationService, CLOCK);
+        service = new TripService(repository, passengerService, destinationService, CLOCK, currentUser);
+        AppUser owner = new AppUser();
+        owner.setId(OWNER_ID);
+        lenient().when(currentUser.get()).thenReturn(owner);
+        lenient().when(currentUser.id()).thenReturn(OWNER_ID);
     }
 
     @Test
@@ -142,7 +154,7 @@ class TripServiceTest {
         Trip existing = trip(1L);
         existing.setDepartureDate(LocalDate.of(2026, 9, 1));
         existing.setReturnDate(LocalDate.of(2026, 9, 10));
-        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.findByIdAndPassengerOwnerId(1L, OWNER_ID)).thenReturn(Optional.of(existing));
         when(passengerService.getEntity(1L)).thenReturn(passenger(1L));
         when(destinationService.getEntity(1L)).thenReturn(destination(1L));
         when(repository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -157,7 +169,7 @@ class TripServiceTest {
     @Test
     void update_throwsBusinessRule_whenTheDepartureIsMovedToThePast() {
         Trip existing = trip(1L);
-        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.findByIdAndPassengerOwnerId(1L, OWNER_ID)).thenReturn(Optional.of(existing));
         TripRequest moved = new TripRequest(LocalDate.of(2026, 10, 1), null, new BigDecimal("100"), "PENDING", 1L, 1L);
 
         assertThatThrownBy(() -> service.update(1L, moved))
@@ -193,7 +205,7 @@ class TripServiceTest {
     @Test
     void update_changesTheStatus_ofAnExistingTrip() {
         Trip existing = trip(1L);
-        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.findByIdAndPassengerOwnerId(1L, OWNER_ID)).thenReturn(Optional.of(existing));
         when(passengerService.getEntity(1L)).thenReturn(passenger(1L));
         when(destinationService.getEntity(1L)).thenReturn(destination(1L));
         when(repository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -206,7 +218,7 @@ class TripServiceTest {
 
     @Test
     void update_throwsNotFound_whenTheTripDoesNotExist() {
-        when(repository.findById(99L)).thenReturn(Optional.empty());
+        when(repository.findByIdAndPassengerOwnerId(99L, OWNER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.update(99L, request("CONFIRMED", LocalDate.of(2026, 12, 30))))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -216,7 +228,7 @@ class TripServiceTest {
 
     @Test
     void findById_throwsNotFound_whenTheTripDoesNotExist() {
-        when(repository.findById(999L)).thenReturn(Optional.empty());
+        when(repository.findByIdAndPassengerOwnerId(999L, OWNER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findById(999L))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -226,26 +238,26 @@ class TripServiceTest {
     @Test
     void findAll_withoutStatus_returnsThePageOfEveryTrip() {
         Pageable pageable = PageRequest.of(0, 10);
-        when(repository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(trip(10L), trip(11L)), pageable, 2));
+        when(repository.findByPassengerOwnerId(OWNER_ID, pageable)).thenReturn(new PageImpl<>(List.of(trip(10L), trip(11L)), pageable, 2));
 
         PageResponse<TripResponse> result = service.findAll(null, pageable);
 
         assertThat(result.content()).extracting(TripResponse::id).containsExactly(10L, 11L);
         assertThat(result.totalElements()).isEqualTo(2);
-        verify(repository, never()).findByStatus(any(), any());
+        verify(repository, never()).findByPassengerOwnerIdAndStatus(any(), any(), any());
     }
 
     @Test
     void findAll_withStatus_filtersByTheNormalizedStatus() {
         Pageable pageable = PageRequest.of(0, 10);
-        when(repository.findByStatus(TripStatus.CONFIRMED, pageable))
+        when(repository.findByPassengerOwnerIdAndStatus(OWNER_ID, TripStatus.CONFIRMED, pageable))
                 .thenReturn(new PageImpl<>(List.of(trip(10L)), pageable, 1));
 
         // Lower case and extra spaces are accepted and normalized
         PageResponse<TripResponse> result = service.findAll("  confirmed ", pageable);
 
         assertThat(result.content()).extracting(TripResponse::id).containsExactly(10L);
-        verify(repository, never()).findAll(any(Pageable.class));
+        verify(repository, never()).findByPassengerOwnerId(any(), any());
     }
 
     @Test
@@ -261,7 +273,7 @@ class TripServiceTest {
     void findByPassenger_returnsTheTripsOfThatPassenger() {
         Pageable pageable = PageRequest.of(0, 10);
         when(passengerService.getEntity(1L)).thenReturn(passenger(1L));
-        when(repository.findByPassengerId(1L, pageable))
+        when(repository.findByPassengerIdAndPassengerOwnerId(1L, OWNER_ID, pageable))
                 .thenReturn(new PageImpl<>(List.of(trip(10L), trip(11L)), pageable, 2));
 
         PageResponse<TripResponse> result = service.findByPassenger(1L, pageable);
@@ -276,14 +288,14 @@ class TripServiceTest {
         assertThatThrownBy(() -> service.findByPassenger(5L, PageRequest.of(0, 10)))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(repository, never()).findByPassengerId(anyLong(), any(Pageable.class));
+        verify(repository, never()).findByPassengerIdAndPassengerOwnerId(anyLong(), anyLong(), any(Pageable.class));
     }
 
     @Test
     void findByDestination_returnsTheTripsToThatDestination() {
         Pageable pageable = PageRequest.of(0, 10);
         when(destinationService.getEntity(1L)).thenReturn(destination(1L));
-        when(repository.findByDestinationId(1L, pageable))
+        when(repository.findByDestinationIdAndPassengerOwnerId(1L, OWNER_ID, pageable))
                 .thenReturn(new PageImpl<>(List.of(trip(10L)), pageable, 1));
 
         PageResponse<TripResponse> result = service.findByDestination(1L, pageable);
@@ -298,13 +310,13 @@ class TripServiceTest {
         assertThatThrownBy(() -> service.findByDestination(9L, PageRequest.of(0, 10)))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(repository, never()).findByDestinationId(anyLong(), any(Pageable.class));
+        verify(repository, never()).findByDestinationIdAndPassengerOwnerId(anyLong(), anyLong(), any(Pageable.class));
     }
 
     @Test
     void delete_removesTheTrip_whenItExists() {
         Trip existing = trip(1L);
-        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.findByIdAndPassengerOwnerId(1L, OWNER_ID)).thenReturn(Optional.of(existing));
 
         service.delete(1L);
 

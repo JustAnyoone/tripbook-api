@@ -2,6 +2,7 @@ package com.tt.tripbook.integration;
 
 import static com.tt.tripbook.TestData.destination;
 import static com.tt.tripbook.TestData.passenger;
+import static com.tt.tripbook.TestData.user;
 import static com.tt.tripbook.TestData.trip;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -16,7 +17,10 @@ import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.DestinationRepository;
 import com.tt.tripbook.repository.PassengerRepository;
+import com.tt.tripbook.TestAuth;
+import com.tt.tripbook.model.AppUser;
 import com.tt.tripbook.repository.TripRepository;
+import com.tt.tripbook.repository.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -63,7 +67,13 @@ class TripApiIntegrationTest {
     @Autowired
     private DestinationRepository destinationRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private MockMvc mockMvc;
+
+    // The signed-in account: the API only shows it the passengers and trips it owns
+    private AppUser owner;
 
     @BeforeEach
     void setUp() {
@@ -72,19 +82,24 @@ class TripApiIntegrationTest {
         tripRepository.deleteAll();
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();
+        userRepository.deleteAll();
+        owner = userRepository.save(user("owner@email.com"));
+        TestAuth.signIn(owner);
     }
 
     // Leave the shared in-memory database empty for the test classes that run after this one
     @AfterEach
     void cleanUp() {
+        TestAuth.signOut();
         tripRepository.deleteAll();
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
     void postTrip_persistsTheTrip_andReturnsItWithPassengerAndDestination() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
 
         mockMvc.perform(post("/api/trips")
@@ -98,6 +113,50 @@ class TripApiIntegrationTest {
                 .andExpect(jsonPath("$.destination.city").value("Lisbon"));
 
         assertThat(tripRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void getTrips_showsOnlyTheTripsOfTheSignedInAccount() throws Exception {
+        AppUser other = userRepository.save(user("other@email.com"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
+        Passenger bob = passengerRepository.save(passenger(other, "CD789012", "Bob Stone"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        tripRepository.save(trip(ana, lisbon));
+        tripRepository.save(trip(bob, lisbon));
+
+        mockMvc.perform(get("/api/trips"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].passenger.name").value("Ana Souza"));
+        // A shared destination only lists the trips of this account
+        mockMvc.perform(get("/api/trips/destination/" + lisbon.getId()))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void getTrip_returns404_forATripOfAnotherAccount() throws Exception {
+        AppUser other = userRepository.save(user("other@email.com"));
+        Passenger bob = passengerRepository.save(passenger(other, "CD789012", "Bob Stone"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        Long othersTripId = tripRepository.save(trip(bob, lisbon)).getId();
+
+        mockMvc.perform(get("/api/trips/" + othersTripId)).andExpect(status().isNotFound());
+        mockMvc.perform(delete("/api/trips/" + othersTripId)).andExpect(status().isNotFound());
+        assertThat(tripRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void postTrip_returns404_whenThePassengerBelongsToAnotherAccount() throws Exception {
+        AppUser other = userRepository.save(user("other@email.com"));
+        Passenger bob = passengerRepository.save(passenger(other, "CD789012", "Bob Stone"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+
+        mockMvc.perform(post("/api/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson(bob.getId(), lisbon.getId(), "2026-12-30")))
+                .andExpect(status().isNotFound());
+
+        assertThat(tripRepository.count()).isZero();
     }
 
     @Test
@@ -115,7 +174,7 @@ class TripApiIntegrationTest {
 
     @Test
     void postTrip_returns400_andSavesNothing_whenTheReturnDateIsBeforeTheDeparture() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
 
         mockMvc.perform(post("/api/trips")
@@ -129,7 +188,7 @@ class TripApiIntegrationTest {
 
     @Test
     void postTrip_returns400_andSavesNothing_whenTheDepartureIsInThePast() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
 
         mockMvc.perform(post("/api/trips")
@@ -144,7 +203,7 @@ class TripApiIntegrationTest {
 
     @Test
     void postTrip_returns400_whenTheDateDoesNotExistInTheCalendar() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
 
         mockMvc.perform(post("/api/trips")
@@ -158,8 +217,8 @@ class TripApiIntegrationTest {
 
     @Test
     void getTripsByPassenger_returnsOnlyThatPassengersTrips() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
-        Passenger john = passengerRepository.save(passenger("CD789012"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
+        Passenger john = passengerRepository.save(passenger(owner, "CD789012"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         tripRepository.save(trip(ana, lisbon));
         tripRepository.save(trip(john, lisbon));
@@ -173,7 +232,7 @@ class TripApiIntegrationTest {
 
     @Test
     void getTrips_filtersByStatus_andShowsTheNewestDepartureFirst() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Trip early = trip(ana, lisbon);
         Trip late = trip(ana, lisbon);
@@ -202,7 +261,7 @@ class TripApiIntegrationTest {
 
     @Test
     void getTrips_returnsTheRequestedPage() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         for (int i = 0; i < 3; i++) {
             tripRepository.save(trip(ana, lisbon));
@@ -218,7 +277,7 @@ class TripApiIntegrationTest {
 
     @Test
     void getTripsByDestination_returnsOnlyTripsToThatDestination() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Destination tokyo = destinationRepository.save(destination("Tokyo", "Japan"));
         tripRepository.save(trip(ana, lisbon));
@@ -240,7 +299,7 @@ class TripApiIntegrationTest {
 
     @Test
     void deleteDestination_returns409_whileItHasTrips_andSucceedsOnceTheyAreGone() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Trip savedTrip = tripRepository.save(trip(ana, lisbon));
 
@@ -259,7 +318,7 @@ class TripApiIntegrationTest {
 
     @Test
     void deletePassenger_returns204_andRemovesTheirTrips() throws Exception {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         tripRepository.save(trip(ana, lisbon));
 

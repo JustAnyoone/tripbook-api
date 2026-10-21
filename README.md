@@ -61,14 +61,16 @@ Client -> Controller -> Service -> Repository -> Hibernate/JPA -> MySQL
 
 | Entity        | Main attributes                                              | Relationships                                |
 |---------------|--------------------------------------------------------------|----------------------------------------------|
-| `Passenger`   | name, documentNumber (unique), email, birthDate              | One passenger has many trips                 |
+| `Passenger`   | name, documentNumber (unique per account), email, birthDate  | Belongs to one account; has many trips       |
 | `Destination` | city, country, description                                   | One destination is used by many trips        |
 | `Trip`        | departureDate, returnDate, price, status                     | Belongs to one passenger and one destination |
-| `AppUser`     | name, email (unique), passwordHash                           | Account used to sign in; unrelated to `Passenger` |
+| `AppUser`     | name, email (unique), passwordHash                           | Account used to sign in; owns passengers (and through them, trips) |
 
 Modeling notes:
 
 - `Trip` owns the foreign keys `passenger_id` and `destination_id` (`@ManyToOne` + `@JoinColumn`).
+- Each account sees only its own passengers and trips. Another account's record answers `404`, as if it did not exist. Destinations are a catalog shared by every account.
+- A database created before accounts owned data is upgraded on start: existing passengers (and their trips) go to the first registered account (`LegacyDataMigration`).
 - Removing a passenger removes their trips (`cascade` and `orphanRemoval`), because a trip cannot exist without its passenger.
 - A destination with trips cannot be removed (HTTP 409). The foreign key enforces the same rule at the database level.
 - `status` is a Java `enum` (`TripStatus`) stored as text and accepts only `PENDING`, `CONFIRMED` or `CANCELLED`.
@@ -367,7 +369,8 @@ frontend/
 - [x] Pagination, sorting and filtering
 - [x] React front-end
 - [x] Authentication (Spring Security with JWT)
-- [ ] Roles and per-user data
+- [x] Per-user data (each account sees only its own passengers and trips)
+- [ ] Roles (admin, for example)
 - [x] Docker setup (docker compose)
 - [ ] Deployment
 - [x] `enum` for the trip status

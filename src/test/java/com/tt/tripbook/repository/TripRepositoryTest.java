@@ -3,9 +3,11 @@ package com.tt.tripbook.repository;
 import static com.tt.tripbook.TestData.destination;
 import static com.tt.tripbook.TestData.passenger;
 import static com.tt.tripbook.TestData.trip;
+import static com.tt.tripbook.TestData.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tt.tripbook.model.AppUser;
 import com.tt.tripbook.model.Destination;
 import com.tt.tripbook.model.Passenger;
 import com.tt.tripbook.model.Trip;
@@ -13,6 +15,7 @@ import com.tt.tripbook.model.TripStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,38 +38,74 @@ class TripRepositoryTest {
     @Autowired
     private DestinationRepository destinationRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @PersistenceContext
     private EntityManager entityManager;
 
+    // Passengers belong to an account, and trips are found through their passenger
+    private AppUser owner;
+
+    @BeforeEach
+    void createOwner() {
+        owner = userRepository.save(user("ana@email.com"));
+    }
+
+    @Test
+    void findByPassengerOwnerId_returnsOnlyTheTripsOfThatAccount() {
+        AppUser bob = userRepository.save(user("bob@email.com"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
+        Passenger bobsPassenger = passengerRepository.save(passenger(bob, "CD789012"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        Trip anasTrip = tripRepository.save(trip(ana, lisbon));
+        tripRepository.save(trip(bobsPassenger, lisbon));
+
+        Page<Trip> result = tripRepository.findByPassengerOwnerId(owner.getId(), PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).extracting(Trip::getId).containsExactly(anasTrip.getId());
+    }
+
+    @Test
+    void findByIdAndPassengerOwnerId_doesNotFindAnotherAccountsTrip() {
+        AppUser bob = userRepository.save(user("bob@email.com"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
+        Destination lisbon = destinationRepository.save(destination("Lisbon"));
+        Trip anasTrip = tripRepository.save(trip(ana, lisbon));
+
+        assertThat(tripRepository.findByIdAndPassengerOwnerId(anasTrip.getId(), owner.getId())).isPresent();
+        assertThat(tripRepository.findByIdAndPassengerOwnerId(anasTrip.getId(), bob.getId())).isEmpty();
+    }
+
     @Test
     void findByPassengerId_returnsOnlyThatPassengersTrips() {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
-        Passenger john = passengerRepository.save(passenger("CD789012"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
+        Passenger john = passengerRepository.save(passenger(owner, "CD789012"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Trip anasTrip = tripRepository.save(trip(ana, lisbon));
         tripRepository.save(trip(john, lisbon));
 
-        Page<Trip> result = tripRepository.findByPassengerId(ana.getId(), PageRequest.of(0, 10));
+        Page<Trip> result = tripRepository.findByPassengerIdAndPassengerOwnerId(ana.getId(), owner.getId(), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Trip::getId).containsExactly(anasTrip.getId());
     }
 
     @Test
     void findByDestinationId_returnsOnlyTripsToThatDestination() {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Destination tokyo = destinationRepository.save(destination("Tokyo"));
         tripRepository.save(trip(ana, lisbon));
         Trip toTokyo = tripRepository.save(trip(ana, tokyo));
 
-        Page<Trip> result = tripRepository.findByDestinationId(tokyo.getId(), PageRequest.of(0, 10));
+        Page<Trip> result = tripRepository.findByDestinationIdAndPassengerOwnerId(tokyo.getId(), owner.getId(), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Trip::getId).containsExactly(toTokyo.getId());
     }
 
     @Test
     void findByStatus_returnsOnlyThatStatus_sortedAndPaged() {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Trip pending = trip(ana, lisbon);
         pending.setStatus(TripStatus.PENDING);
@@ -77,8 +116,8 @@ class TripRepositoryTest {
         late.setReturnDate(LocalDate.of(2027, 1, 20));
         late = tripRepository.save(late);
 
-        Page<Trip> result = tripRepository.findByStatus(
-                TripStatus.CONFIRMED, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "departureDate")));
+        Page<Trip> result = tripRepository.findByPassengerOwnerIdAndStatus(
+                owner.getId(), TripStatus.CONFIRMED, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "departureDate")));
 
         assertThat(result.getContent()).extracting(Trip::getId).containsExactly(late.getId(), early.getId());
         assertThat(result.getTotalElements()).isEqualTo(2);
@@ -86,7 +125,7 @@ class TripRepositoryTest {
 
     @Test
     void findAll_returnsTheRequestedPage_withPassengerAndDestinationLoaded() {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         for (int i = 0; i < 3; i++) {
             tripRepository.save(trip(ana, lisbon));
@@ -104,7 +143,7 @@ class TripRepositoryTest {
 
     @Test
     void existsByDestinationId_isTrueOnlyWhileATripUsesTheDestination() {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         Destination tokyo = destinationRepository.save(destination("Tokyo"));
         Trip savedTrip = tripRepository.save(trip(ana, lisbon));
@@ -119,7 +158,7 @@ class TripRepositoryTest {
 
     @Test
     void deletingADestinationInUse_isRejectedByTheForeignKey() {
-        Passenger ana = passengerRepository.save(passenger("AB123456"));
+        Passenger ana = passengerRepository.save(passenger(owner, "AB123456"));
         Destination lisbon = destinationRepository.save(destination("Lisbon"));
         tripRepository.save(trip(ana, lisbon));
         entityManager.flush();

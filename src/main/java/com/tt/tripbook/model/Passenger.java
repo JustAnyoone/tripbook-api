@@ -8,7 +8,8 @@ import java.util.List;
 
 
 @Entity
-@Table(name = "passenger")
+// A document number is unique per account, so two users can each register the same person
+@Table(name = "passenger", uniqueConstraints = @UniqueConstraint(columnNames = {"owner_id", "document_number"}))
 public class Passenger {
 
     @Id
@@ -19,7 +20,7 @@ public class Passenger {
     private String name;
 
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(name = "document_number", nullable = false, length = 20)
     private String documentNumber;
 
 
@@ -29,6 +30,12 @@ public class Passenger {
 
     @Column(name = "birth_date")
     private LocalDate birthDate;
+
+    // The account this passenger belongs to. Nullable in the schema only so that rows created before
+    // accounts owned data can be adopted by LegacyDataMigration; the service always sets it.
+    @ManyToOne
+    @JoinColumn(name = "owner_id")
+    private AppUser owner;
 
     @OneToMany(mappedBy = "passenger", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Trip> trips = new ArrayList<>();
@@ -62,6 +69,12 @@ public class Passenger {
     }
     public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
+    }
+    public AppUser getOwner() {
+        return owner;
+    }
+    public void setOwner(AppUser owner) {
+        this.owner = owner;
     }
     public List<Trip> getTrips() {
         return trips;
