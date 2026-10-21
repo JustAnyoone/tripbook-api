@@ -5,9 +5,21 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-REST API for managing trip bookings: passengers, destinations and the trips that connect them. Built with Spring Boot, Spring Data JPA and MySQL.
+Full-stack app for managing trip bookings: passengers, destinations and the trips that connect them. A Spring Boot REST API with MySQL, and a React front-end where every trip is shown as a boarding pass.
 
-The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and is being evolved as a portfolio project: DTOs, pagination, automated tests, continuous integration, a React front-end and JWT authentication are already in place; deployment is next.
+The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and was evolved into a portfolio project: DTOs, pagination, automated tests, continuous integration, JWT authentication, per-account data, a React front-end with light and dark themes, and Docker are in place; publishing it online is next.
+
+## Screenshots
+
+The images below use sample data.
+
+| Light | Dark |
+|-------|------|
+| ![Trips as boarding passes, light theme](docs/screenshots/trips-light.png) | ![Trips as boarding passes, dark theme](docs/screenshots/trips-dark.png) |
+
+| Calendar date picker | Sign-in | Mobile |
+|----------------------|---------|--------|
+| ![Calendar date picker that blocks past days](docs/screenshots/calendar.png) | ![Sign-in styled as a check-in pass](docs/screenshots/sign-in.png) | ![Trips on a phone, dark theme](docs/screenshots/trips-mobile-dark.png) |
 
 ## Features
 
@@ -17,6 +29,8 @@ The project started as a university assignment (Object-Oriented Programming, CEU
 - A destination that still has trips cannot be deleted; deleting a passenger also deletes their trips
 - A destination (city and country, ignoring letter case and extra spaces) can be registered only once; a repeat returns `409`
 - Pagination, sorting and filtering on every list endpoint
+- Each account sees only its own passengers and trips (destinations are a shared catalog)
+- Each trip has a price in BRL, USD or EUR, shown in that currency's own format
 - Accounts with sign-up and sign-in: passwords stored as BCrypt hashes, stateless JWT access tokens, every `/api` route protected except register and login
 - Input validation with clear error messages and a single, consistent error format
 - Interactive API documentation with Swagger UI
@@ -47,8 +61,8 @@ Layered structure under the `com.tt.tripbook` package:
 | `service`    | Business rules and transactions                                   |
 | `repository` | Data access with Spring Data JPA                                  |
 | `model`      | JPA entities and relationships                                    |
-| `security`   | Security filter chain, JWT encoder/decoder, JSON 401/403 responses |
-| `config`     | CORS rules                                                        |
+| `security`   | Security filter chain, JWT encoder/decoder, the signed-in account, JSON 401/403 responses |
+| `config`     | CORS rules, the clock, front-end routes, one-time data upgrade    |
 | `exception`  | Custom exceptions and the global error handler                    |
 
 ```
@@ -63,7 +77,7 @@ Client -> Controller -> Service -> Repository -> Hibernate/JPA -> MySQL
 |---------------|--------------------------------------------------------------|----------------------------------------------|
 | `Passenger`   | name, documentNumber (unique per account), email, birthDate  | Belongs to one account; has many trips       |
 | `Destination` | city, country, description                                   | One destination is used by many trips        |
-| `Trip`        | departureDate, returnDate, price, currency, status                     | Belongs to one passenger and one destination |
+| `Trip`        | departureDate, returnDate, price, currency, status           | Belongs to one passenger and one destination |
 | `AppUser`     | name, email (unique), passwordHash                           | Account used to sign in; owns passengers (and through them, trips) |
 
 Modeling notes:
@@ -287,7 +301,7 @@ Create a trip (`POST /api/trips`). Send only the ids of the passenger and the de
 }
 ```
 
-The response embeds the full passenger and destination.
+`currency` is optional (`BRL`, `USD` or `EUR`; `BRL` when omitted). The response embeds the full passenger and destination.
 
 ## Error handling
 
@@ -308,7 +322,7 @@ Every error uses the same format:
 | 400    | Invalid data, impossible date, date in the past, unknown status or sort property, or return date before departure date |
 | 401    | Missing, invalid or expired token; wrong email or password on login                      |
 | 404    | Trip, passenger or destination not found                                                 |
-| 409    | Document number or email already registered, or deleting a destination that still has trips |
+| 409    | Document number (per account), email or destination (city and country) already registered, or deleting a destination that still has trips |
 
 ## Testing
 
@@ -335,7 +349,7 @@ cd frontend
 npm test
 ```
 
-Vitest and Testing Library cover the API client (error mapping, query building, the Bearer header), the date helpers, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
+Vitest and Testing Library cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse and keyboard), the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
 
 GitHub Actions runs both suites, and builds the front-end, on every push and pull request (`.github/workflows/ci.yml`).
 
@@ -347,9 +361,9 @@ src/main/java/com/tt/tripbook
   dto/          *Request, *Response records and PageResponse
   service/      DestinationService, PassengerService, TripService
   repository/   DestinationRepository, PassengerRepository, TripRepository
-  model/        Destination, Passenger, Trip
-  security/     SecurityConfig, JsonAuthErrorHandler
-  config/       CorsConfig
+  model/        Destination, Passenger, Trip, AppUser, TripStatus, Currency
+  security/     SecurityConfig, CurrentUser, JsonAuthErrorHandler
+  config/       CorsConfig, ClockConfig, SpaConfig, LegacyDataMigration
   exception/    ApiError, ConflictException, ResourceNotFoundException,
                 BusinessRuleException, InvalidCredentialsException, GlobalExceptionHandler
 src/main/resources
@@ -358,8 +372,9 @@ src/test/java/com/tt/tripbook
   controller/ service/ repository/ integration/
 frontend/
   src/api/          typed API client
-  src/components/   ListPage, Dialog, Pagination, forms
+  src/components/   ListPage, Dialog, DatePicker, Pagination, ThemeToggle, forms
   src/auth/         AuthContext, RequireAuth, token storage
+  src/theme/        light and dark theme (OS preference, saved choice)
   src/pages/        TripsPage, PassengersPage, DestinationsPage, AuthPage
 ```
 
