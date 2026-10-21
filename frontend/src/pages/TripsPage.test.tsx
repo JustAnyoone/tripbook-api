@@ -98,6 +98,8 @@ describe('trip form calendar', () => {
     await user.click(screen.getByLabelText('Return date'));
     await user.click(day('Sunday, October 25, 2026'));
     await user.type(screen.getByLabelText('Price'), '100');
+    expect(screen.getByLabelText('Currency')).toHaveValue('BRL');
+    await user.selectOptions(screen.getByLabelText('Currency'), 'USD');
     const form = screen.getByLabelText('Price').closest('form')!;
     await user.click(within(form).getByRole('button', { name: 'Add trip' }));
 
@@ -105,6 +107,7 @@ describe('trip form calendar', () => {
     expect(JSON.parse(String((post[1] as RequestInit).body))).toMatchObject({
       departureDate: '2026-10-20',
       returnDate: '2026-10-25',
+      currency: 'USD',
       passengerId: 1,
       destinationId: 1,
     });
@@ -134,6 +137,7 @@ describe('trip boarding passes', () => {
         departureDate: '2026-12-20',
         returnDate: '2026-12-30',
         price: 3500.5,
+        currency: 'USD',
         status: 'CONFIRMED',
         passenger: ana,
         destination: lisbon,
@@ -145,7 +149,7 @@ describe('trip boarding passes', () => {
     expect(within(pass).getByText('Ana Souza')).toBeInTheDocument();
     expect(within(pass).getByText('20 Dec 2026')).toBeInTheDocument();
     expect(within(pass).getByText('10 nights')).toBeInTheDocument();
-    expect(within(pass).getByText('3,500.50')).toBeInTheDocument();
+    expect(within(pass).getByText('$3,500.50')).toBeInTheDocument();
     expect(within(pass).getByText('Confirmed')).toBeInTheDocument();
     expect(within(pass).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });

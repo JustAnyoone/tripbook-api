@@ -1,6 +1,7 @@
 package com.tt.tripbook.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -22,6 +23,12 @@ public class Trip {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+
+    // The default also fills the rows that existed before this column was added (ddl-auto=update)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 3)
+    @ColumnDefault("'BRL'")
+    private Currency currency = Currency.BRL;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -67,6 +74,14 @@ public class Trip {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public Currency getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(Currency currency) {
+        this.currency = currency;
     }
 
     public TripStatus getStatus() {

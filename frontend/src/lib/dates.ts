@@ -48,10 +48,11 @@ export function formatNights(nights: number): string {
   return nights === 1 ? '1 night' : `${nights} nights`;
 }
 
-const priceFormatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Each currency is written the way its own country writes it: R$ 3.500,50, $3,500.50, 3.500,50 €
+const PRICE_LOCALES: Record<string, string> = { BRL: 'pt-BR', USD: 'en-US', EUR: 'de-DE' };
 
-export function formatPrice(value: number): string {
-  return priceFormatter.format(value);
+export function formatPrice(value: number, currency: string = 'BRL'): string {
+  return new Intl.NumberFormat(PRICE_LOCALES[currency] ?? 'en-US', { style: 'currency', currency }).format(value);
 }
 
 // Today as "yyyy-MM-dd" in the user's own time zone (toISOString would give the UTC day)

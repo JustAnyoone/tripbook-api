@@ -115,7 +115,7 @@ class TripServiceTest {
 
     @Test
     void create_throwsBusinessRule_whenTheDepartureDateIsInThePast() {
-        TripRequest past = new TripRequest(LocalDate.of(2026, 10, 16), null, new BigDecimal("100"), "PENDING", 1L, 1L);
+        TripRequest past = new TripRequest(LocalDate.of(2026, 10, 16), null, new BigDecimal("100"), "PENDING", 1L, 1L, null);
 
         assertThatThrownBy(() -> service.create(past))
                 .isInstanceOf(BusinessRuleException.class)
@@ -130,7 +130,7 @@ class TripServiceTest {
         when(destinationService.getEntity(1L)).thenReturn(destination(1L));
         when(repository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
         TripRequest today = new TripRequest(LocalDate.of(2026, 10, 17), LocalDate.of(2026, 10, 17),
-                new BigDecimal("100"), "PENDING", 1L, 1L);
+                new BigDecimal("100"), "PENDING", 1L, 1L, null);
 
         TripResponse response = service.create(today);
 
@@ -140,7 +140,7 @@ class TripServiceTest {
     @Test
     void create_throwsBusinessRule_whenTheReturnDateIsInThePast() {
         TripRequest past = new TripRequest(LocalDate.of(2026, 12, 20), LocalDate.of(2026, 10, 16),
-                new BigDecimal("100"), "PENDING", 1L, 1L);
+                new BigDecimal("100"), "PENDING", 1L, 1L, null);
 
         assertThatThrownBy(() -> service.create(past))
                 .isInstanceOf(BusinessRuleException.class)
@@ -159,7 +159,7 @@ class TripServiceTest {
         when(destinationService.getEntity(1L)).thenReturn(destination(1L));
         when(repository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
         TripRequest sameDates = new TripRequest(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10),
-                new BigDecimal("100"), "CANCELLED", 1L, 1L);
+                new BigDecimal("100"), "CANCELLED", 1L, 1L, null);
 
         TripResponse response = service.update(1L, sameDates);
 
@@ -170,7 +170,7 @@ class TripServiceTest {
     void update_throwsBusinessRule_whenTheDepartureIsMovedToThePast() {
         Trip existing = trip(1L);
         when(repository.findByIdAndPassengerOwnerId(1L, OWNER_ID)).thenReturn(Optional.of(existing));
-        TripRequest moved = new TripRequest(LocalDate.of(2026, 10, 1), null, new BigDecimal("100"), "PENDING", 1L, 1L);
+        TripRequest moved = new TripRequest(LocalDate.of(2026, 10, 1), null, new BigDecimal("100"), "PENDING", 1L, 1L, null);
 
         assertThatThrownBy(() -> service.update(1L, moved))
                 .isInstanceOf(BusinessRuleException.class)
@@ -323,8 +323,19 @@ class TripServiceTest {
         verify(repository).delete(existing);
     }
 
+    @Test
+    void create_usesTheCurrencyOfTheRequest_andBrlWhenItIsOmitted() {
+        when(passengerService.getEntity(1L)).thenReturn(passenger(1L));
+        when(destinationService.getEntity(1L)).thenReturn(destination(1L));
+        when(repository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TripRequest inDollars = new TripRequest(LocalDate.of(2026, 12, 20), null, new BigDecimal("100"), "PENDING", 1L, 1L, "USD");
+        assertThat(service.create(inDollars).currency()).isEqualTo("USD");
+        assertThat(service.create(request("PENDING", null)).currency()).isEqualTo("BRL");
+    }
+
     private TripRequest request(String status, LocalDate returnDate) {
-        return new TripRequest(LocalDate.of(2026, 12, 20), returnDate, new BigDecimal("3500.50"), status, 1L, 1L);
+        return new TripRequest(LocalDate.of(2026, 12, 20), returnDate, new BigDecimal("3500.50"), status, 1L, 1L, null);
     }
 
     private Passenger passenger(Long id) {

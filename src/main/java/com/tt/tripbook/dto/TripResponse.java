@@ -12,6 +12,7 @@ public record TripResponse(
         LocalDate departureDate,
         LocalDate returnDate,
         BigDecimal price,
+        String currency,
         String status,
         PassengerResponse passenger,
         DestinationResponse destination) {
@@ -22,6 +23,7 @@ public record TripResponse(
                 trip.getDepartureDate(),
                 trip.getReturnDate(),
                 trip.getPrice(),
+                trip.getCurrency().name(),
                 trip.getStatus().name(),
                 PassengerResponse.from(trip.getPassenger()),
                 DestinationResponse.from(trip.getDestination()));
