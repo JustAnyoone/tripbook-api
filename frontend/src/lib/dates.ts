@@ -1,3 +1,5 @@
+import { locale, plural, t } from '../i18n';
+
 // The API sends dates as "yyyy-MM-dd". They are parsed by hand: new Date("2026-12-20")
 // is read as UTC midnight and can show up as the previous day in time zones behind UTC.
 
@@ -31,10 +33,8 @@ export function addMonths(iso: string, months: number): string {
   return toIso(date);
 }
 
-const formatter = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-
 export function formatDate(iso: string | null): string {
-  return iso ? formatter.format(parse(iso)) : '';
+  return iso ? new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(parse(iso)) : '';
 }
 
 // Whole nights between two dates, or null when there is no return date
@@ -45,7 +45,7 @@ export function nightsBetween(departure: string, returnDate: string | null): num
 }
 
 export function formatNights(nights: number): string {
-  return nights === 1 ? '1 night' : `${nights} nights`;
+  return plural('trips.nights', nights);
 }
 
 // Each currency is written the way its own country writes it: R$ 3.500,50, $3,500.50, 3.500,50 €
@@ -77,14 +77,14 @@ interface TripDates {
 // When editing, a date left unchanged is accepted even if it has passed since the trip was created.
 export function validateTripDates(dates: TripDates, today: string, initial?: TripDates): string | null {
   const { departureDate, returnDate } = dates;
-  if (!isRealDate(departureDate)) return 'Departure date is not a valid date.';
-  if (returnDate && !isRealDate(returnDate)) return 'Return date is not a valid date.';
+  if (!isRealDate(departureDate)) return t('trips.badDeparture');
+  if (returnDate && !isRealDate(returnDate)) return t('trips.badReturn');
   if (departureDate < today && departureDate !== initial?.departureDate) {
-    return 'Departure date cannot be in the past.';
+    return t('trips.pastDeparture');
   }
   if (returnDate && returnDate < today && returnDate !== initial?.returnDate) {
-    return 'Return date cannot be in the past.';
+    return t('trips.pastReturn');
   }
-  if (returnDate && returnDate < departureDate) return 'Return date cannot be before departure date.';
+  if (returnDate && returnDate < departureDate) return t('trips.returnBeforeDeparture');
   return null;
 }

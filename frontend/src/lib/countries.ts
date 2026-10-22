@@ -1,3 +1,4 @@
+import { getLang } from '../i18n';
 import { COUNTRY_CODES } from './countryCodes';
 
 export interface Country {
@@ -58,10 +59,25 @@ export function findCountry(text: string | null | undefined): Country | undefine
   return text ? BY_NAME.get(normalize(text)) : undefined;
 }
 
+const displayNames = { en: english, pt: portuguese };
+
+// The country's name in the language of the interface. The stored value stays the English name.
+export function localName(country: Country): string {
+  return displayNames[getLang()].of(country.code.toUpperCase()) ?? country.name;
+}
+
+// The name to show for stored text: the translated one when it is a known country, the text otherwise
+export function countryName(text: string): string {
+  const match = findCountry(text);
+  return match ? localName(match) : text;
+}
+
 // Countries whose name starts with, or contains, the query. Names that start with it come first.
 export function searchCountries(query: string): Country[] {
   const needle = normalize(query);
-  if (!needle) return COUNTRIES;
+  // The list reads alphabetically in the language of the interface
+  const byLocalName = (a: Country, b: Country) => localName(a).localeCompare(localName(b), getLang() === 'pt' ? 'pt-BR' : 'en');
+  if (!needle) return [...COUNTRIES].sort(byLocalName);
   const starts: Country[] = [];
   const contains: Country[] = [];
   for (const country of COUNTRIES) {
@@ -69,5 +85,5 @@ export function searchCountries(query: string): Country[] {
     if (names.some((name) => name.startsWith(needle))) starts.push(country);
     else if (names.some((name) => name.includes(needle))) contains.push(country);
   }
-  return [...starts, ...contains];
+  return [...starts.sort(byLocalName), ...contains.sort(byLocalName)];
 }

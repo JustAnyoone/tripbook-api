@@ -5,6 +5,7 @@ import { useList } from '../hooks/useList';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Dialog } from './Dialog';
 import { ErrorBanner } from './ErrorBanner';
+import { plural, t, type MessageKey } from '../i18n';
 import { Pagination } from './Pagination';
 import { useRefresh } from './RefreshContext';
 
@@ -39,10 +40,8 @@ export interface SortOption {
 }
 
 interface ListPageProps<T extends { id: number }, I> {
-  title: string;
-  /** Singular name used in buttons and messages, for example "destination" */
-  noun: string;
-  nounPlural: string;
+  /** Which set of texts to use: "trips" reads trips.title, trips.add, trips.empty and so on */
+  resource: ResourceName;
   api: Resource<T, I>;
   filter: FilterConfig;
   /** Table columns; not needed when `renderCard` is used */
@@ -52,13 +51,13 @@ interface ListPageProps<T extends { id: number }, I> {
   /** Card layouts have no column headers to click, so sorting is offered as a select */
   sortOptions?: SortOption[];
   renderForm: (props: FormProps<T, I>) => ReactNode;
-  describe: (item: T) => string;
-  /** Extra sentence for the delete confirmation, for example what else gets removed */
-  deleteNote?: string;
-  emptyHint: string;
+  /** Values for the {placeholders} of the delete confirmation text */
+  deleteParams: (item: T) => Record<string, string>;
   /** Extra buttons next to the Add button, for example an export */
   headerActions?: ReactNode;
 }
+
+type ResourceName = 'trips' | 'passengers' | 'destinations';
 
 interface Sort {
   field: string;
@@ -67,18 +66,14 @@ interface Sort {
 
 // One page for every resource: a paginated, filterable, sortable table plus the create, edit and delete flows.
 export function ListPage<T extends { id: number }, I>({
-  title,
-  noun,
-  nounPlural,
+  resource,
   api,
   filter,
   columns = [],
   renderCard,
   sortOptions,
   renderForm,
-  describe,
-  deleteNote,
-  emptyHint,
+  deleteParams,
   headerActions,
 }: ListPageProps<T, I>) {
   const [page, setPage] = useState(0);
@@ -89,6 +84,7 @@ export function ListPage<T extends { id: number }, I>({
   const [deleting, setDeleting] = useState<T | null>(null);
 
   const { version: dataVersion } = useRefresh();
+  const text = (name: string, params?: Record<string, string | number>) => t(`${resource}.${name}` as MessageKey, params);
   const filterValue = useDebounced(filterInput, 300);
 
   const { data, loading, error, reload } = useList(
@@ -144,10 +140,10 @@ export function ListPage<T extends { id: number }, I>({
   const actionsFor = (item: T) => (
     <>
       <button type="button" className="button button-quiet" onClick={() => setEditing(item)}>
-        Edit
+        {t('common.edit')}
       </button>
       <button type="button" className="button button-quiet button-danger-text" onClick={() => setDeleting(item)}>
-        Delete
+        {t('common.delete')}
       </button>
     </>
   );
@@ -160,15 +156,15 @@ export function ListPage<T extends { id: number }, I>({
     <section>
       <header className="page-header">
         <div>
-          <h1>{title}</h1>
+          <h1>{text('title')}</h1>
           <p className="page-count" aria-live="polite">
-            {data ? `${total} ${total === 1 ? noun : nounPlural}${hasFilter ? ' found' : ''}` : ' '}
+            {data ? plural(`${resource}.${hasFilter ? 'found' : 'count'}` as 'trips.count', total) : ' '}
           </p>
         </div>
         <div className="page-actions">
           {headerActions}
           <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
-            Add {noun}
+            {text('add')}
           </button>
         </div>
       </header>
@@ -178,7 +174,7 @@ export function ListPage<T extends { id: number }, I>({
           <label htmlFor="list-filter">{filter.label}</label>
           {filter.options ? (
             <select id="list-filter" value={filterInput} onChange={(event) => changeFilter(event.target.value)}>
-              <option value="">All</option>
+              <option value="">{t('common.all')}</option>
               {filter.options.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -197,9 +193,9 @@ export function ListPage<T extends { id: number }, I>({
         </div>
         {renderCard && sortOptions && (
           <div className="field toolbar-field">
-            <label htmlFor="list-sort">Sort by</label>
+            <label htmlFor="list-sort">{t('list.sortBy')}</label>
             <select id="list-sort" value={sort ? `${sort.field},${sort.direction}` : ''} onChange={(event) => chooseSort(event.target.value)}>
-              <option value="">Default order</option>
+              <option value="">{t('list.defaultOrder')}</option>
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -243,7 +239,7 @@ export function ListPage<T extends { id: number }, I>({
                   );
                 })}
                 <th scope="col">
-                  <span className="visually-hidden">Actions</span>
+                  <span className="visually-hidden">{t('common.actions')}</span>
                 </th>
               </tr>
             </thead>
@@ -270,18 +266,16 @@ export function ListPage<T extends { id: number }, I>({
           </table>
         )}
 
-        {!data && loading && <p className="visually-hidden" role="status">Loading {nounPlural}…</p>}
+        {!data && loading && <p className="visually-hidden" role="status">{text('loading')}</p>}
         {data && rows.length === 0 && !loading && (
           <div className="table-message">
             {hasFilter ? (
-              <p>
-                No {nounPlural} match “{filterValue.trim()}”.
-              </p>
+              <p>{text('noMatch', { query: filterValue.trim() })}</p>
             ) : (
               <>
-                <p>No {nounPlural} yet. {emptyHint}</p>
+                <p>{text('empty')}</p>
                 <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
-                  Add {noun}
+                  {text('add')}
                 </button>
               </>
             )}
@@ -304,7 +298,7 @@ export function ListPage<T extends { id: number }, I>({
       )}
 
       {editing !== null && (
-        <Dialog title={editing === 'new' ? `Add ${noun}` : `Edit ${noun}`} onClose={() => setEditing(null)}>
+        <Dialog title={editing === 'new' ? text('add') : text('edit')} onClose={() => setEditing(null)}>
           {renderForm({
             initial: editing === 'new' ? null : editing,
             onSubmit: save,
@@ -315,9 +309,9 @@ export function ListPage<T extends { id: number }, I>({
 
       {deleting && (
         <ConfirmDialog
-          title={`Delete ${noun}`}
-          message={`Delete ${describe(deleting)}? ${deleteNote ? deleteNote + ' ' : ''}This cannot be undone.`}
-          confirmLabel={`Delete ${noun}`}
+          title={text('deleteTitle')}
+          message={text('deleteMessage', deleteParams(deleting))}
+          confirmLabel={text('deleteTitle')}
           onConfirm={confirmDelete}
           onCancel={() => setDeleting(null)}
         />

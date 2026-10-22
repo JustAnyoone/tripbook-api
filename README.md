@@ -17,6 +17,10 @@ The images below use sample data.
 |-------|------|
 | ![Trips as boarding passes, light theme](docs/screenshots/trips-light.png) | ![Trips as boarding passes, dark theme](docs/screenshots/trips-dark.png) |
 
+The same screen in Brazilian Portuguese:
+
+![Trips in Brazilian Portuguese](docs/screenshots/trips-pt.png)
+
 | Calendar date picker | Sign-in | Mobile |
 |----------------------|---------|--------|
 | ![Calendar date picker that blocks past days](docs/screenshots/calendar.png) | ![Sign-in styled as a check-in pass](docs/screenshots/sign-in.png) | ![Trips on a phone, dark theme](docs/screenshots/trips-mobile-dark.png) |
@@ -41,6 +45,7 @@ The images below use sample data.
 - Navigation icons for Trips, Passengers and Destinations, and a plane on the boarding pass route line
 - Dashboard as the first screen: trips per status, money booked per currency (currencies are never added together), the next departures and the most visited destinations, all computed by the database with group-by queries (`GET /api/dashboard`)
 - Sorting trips by price groups them by currency first, since 100 EUR and 100 BRL are not the same amount
+- English and Brazilian Portuguese: a switch in the top bar (and on the sign-in page) changes every text, the dates, the calendar, the country names and the API's error messages. The choice is remembered; first visits follow the browser language. Texts live in `frontend/src/i18n` (`en.ts` is the reference and the compiler requires `pt.ts` to have the same keys)
 - Loading placeholders (skeletons) instead of an empty screen, and a notice on the sign-in page when the session expired
 - Dependabot opens weekly pull requests for Maven, npm, GitHub Actions and Docker updates
 - Export every trip as a CSV file (opens in Excel with accents intact; text that looks like a spreadsheet formula is neutralised)
@@ -359,7 +364,7 @@ cd frontend
 npm test
 ```
 
-Vitest and Testing Library (85 tests) cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse, keyboard, max date, month and year jump), the country list and flags, the sample data loader, the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
+Vitest and Testing Library (92 tests) cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse, keyboard, max date, month and year jump), the country list and flags, the sample data loader, the translations (every English text must have a Portuguese one) and the language switch, the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
 
 GitHub Actions runs both suites, and builds the front-end, on every push and pull request (`.github/workflows/ci.yml`).
 

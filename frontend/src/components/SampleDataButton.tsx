@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { messageOf } from '../api/client';
+import { t } from '../i18n';
 import { loadSampleData } from '../lib/seed';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Dialog } from './Dialog';
@@ -17,8 +18,8 @@ export function SampleDataButton() {
       const { destinations, passengers, trips } = await loadSampleData();
       setSummary(
         destinations + passengers + trips === 0
-          ? 'The sample data is already here, nothing new was added.'
-          : `Added ${destinations} destinations, ${passengers} passengers and ${trips} trips.`,
+          ? t('sample.nothingNew')
+          : t('sample.added', { destinations, passengers, trips }),
       );
     } catch (failure) {
       // Whatever was created before the failure stays; show it so the lists are not stale
@@ -33,26 +34,26 @@ export function SampleDataButton() {
     <>
       <button type="button" className="button button-outline button-with-icon" onClick={() => setAsking(true)}>
         <SparklesIcon />
-        Sample data
+        {t('sample.button')}
       </button>
       {asking && (
         <ConfirmDialog
-          title="Load sample data"
-          message="Adds a few example destinations, passengers and trips to your account. Running it again does not create duplicates."
-          confirmLabel="Add sample data"
+          title={t('sample.title')}
+          message={t('sample.message')}
+          confirmLabel={t('sample.confirm')}
           tone="primary"
           onConfirm={load}
           onCancel={() => setAsking(false)}
         />
       )}
       {summary && (
-        <Dialog title="Sample data" onClose={() => setSummary(null)}>
+        <Dialog title={t('sample.button')} onClose={() => setSummary(null)}>
           <p className="dialog-text" role="status">
             {summary}
           </p>
           <div className="dialog-actions">
             <button type="button" className="button button-primary" onClick={() => setSummary(null)}>
-              Done
+              {t('common.done')}
             </button>
           </div>
         </Dialog>

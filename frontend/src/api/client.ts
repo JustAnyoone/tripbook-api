@@ -1,3 +1,5 @@
+import { getLang, t } from '../i18n';
+import { translateApiMessage } from '../i18n/apiMessages';
 import { getToken } from '../auth/token';
 import type {
   AuthResult,
@@ -37,7 +39,7 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 }
 
 export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Try again.';
+  return error instanceof Error ? error.message : t('error.generic');
 }
 
 interface RequestOptions {
@@ -58,19 +60,19 @@ async function request<T>(path: string, init?: RequestInit, options: RequestOpti
       headers: Object.keys(headers).length > 0 ? headers : undefined,
     });
   } catch {
-    throw new ApiError(0, 'Cannot reach the TripBook API. Check that the server is running.');
+    throw new ApiError(0, t('error.network'));
   }
 
   if (response.status === 401 && token && !options.publicEndpoint) onUnauthorized?.();
 
   if (!response.ok) {
     // The API answers errors as { status, message, timestamp }
-    let message = `The request failed (HTTP ${response.status}).`;
+    let message = t('error.http', { status: response.status });
     try {
       const body: unknown = await response.json();
       if (typeof body === 'object' && body !== null && 'message' in body) {
         const apiMessage = (body as { message: unknown }).message;
-        if (typeof apiMessage === 'string' && apiMessage.length > 0) message = apiMessage;
+        if (typeof apiMessage === 'string' && apiMessage.length > 0) message = translateApiMessage(apiMessage, getLang());
       }
     } catch {
       // The body was not JSON; keep the generic message

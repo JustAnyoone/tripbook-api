@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { messageOf } from '../api/client';
+import { t } from '../i18n';
 import { ErrorBanner } from './ErrorBanner';
 
 interface FormShellProps {
@@ -32,7 +33,7 @@ export function FormShell({ submitLabel, onSubmit, onCancel, children }: FormShe
       {error && <ErrorBanner message={error} />}
       <div className="dialog-actions">
         <button type="button" className="button button-quiet" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button type="submit" className="button button-primary" disabled={busy}>
           {submitLabel}

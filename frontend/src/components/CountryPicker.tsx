@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { findCountry, searchCountries, type Country } from '../lib/countries';
+import { t } from '../i18n';
+import { findCountry, localName, searchCountries, type Country } from '../lib/countries';
 import { Flag } from './Flag';
 
 interface CountryPickerProps {
@@ -26,6 +27,9 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
 
   // While the box shows an exact country there is nothing to narrow down: show the whole list
   const matches: Country[] = findCountry(value) ? searchCountries('') : searchCountries(value);
+  // A picked country is shown in the language of the interface; what is stored stays the English name
+  const known = findCountry(value);
+  const shownValue = known ? localName(known) : value;
   const current = Math.min(active, Math.max(matches.length - 1, 0));
   const shown = Math.max(visible, current + 1);
 
@@ -45,7 +49,7 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
 
   // Native form validation: only a name from the list can be submitted
   useEffect(() => {
-    inputRef.current?.setCustomValidity(!value || findCountry(value) ? '' : 'Choose a country from the list');
+    inputRef.current?.setCustomValidity(!value || findCountry(value) ? '' : t('country.notInList'));
   }, [value]);
 
   function choose(country: Country) {
@@ -80,14 +84,14 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
       <input
         ref={inputRef}
         id={id}
-        value={value}
+        value={shownValue}
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={open && matches[current] ? `${listId}-${matches[current].code}` : undefined}
         autoComplete="off"
-        placeholder="Start typing a country"
+        placeholder={t('country.placeholder')}
         required={required}
         onChange={(event) => {
           onChange(event.target.value);
@@ -111,7 +115,7 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
             if (list.scrollTop + list.clientHeight >= list.scrollHeight - 60) setVisible((count) => count + CHUNK);
           }}
         >
-          {matches.length === 0 && <li className="combobox-empty">No country matches “{value}”.</li>}
+          {matches.length === 0 && <li className="combobox-empty">{t('country.noMatch', { query: value })}</li>}
           {matches.slice(0, shown).map((country, index) => (
             <li
               key={country.code}
@@ -127,7 +131,7 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
               onMouseEnter={() => setActive(index)}
             >
               <Flag country={country.name} />
-              <span>{country.name}</span>
+              <span>{localName(country)}</span>
             </li>
           ))}
         </ul>

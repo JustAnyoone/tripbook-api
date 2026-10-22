@@ -7,23 +7,14 @@ import { DownloadIcon, PlaneIcon } from '../components/icons';
 import { CountryLabel } from '../components/Flag';
 import { DatePicker } from '../components/DatePicker';
 import { ListPage, type FormProps, type SortOption } from '../components/ListPage';
+import { t } from '../i18n';
+import { countryName } from '../lib/countries';
 import { downloadFile, tripsToCsv } from '../lib/csv';
 import { formatDate, formatNights, formatPrice, nightsBetween, todayIso, validateTripDates } from '../lib/dates';
 
-const CURRENCY_LABELS: Record<Currency, string> = {
-  BRL: 'BRL, Brazilian real',
-  USD: 'USD, US dollar',
-  EUR: 'EUR, euro',
-};
-
-const STATUS_LABELS: Record<TripStatus, string> = {
-  PENDING: 'Pending',
-  CONFIRMED: 'Confirmed',
-  CANCELLED: 'Cancelled',
-};
 
 function StatusBadge({ status }: { status: TripStatus }) {
-  return <span className={`status status-${status.toLowerCase()}`}>{STATUS_LABELS[status]}</span>;
+  return <span className={`status status-${status.toLowerCase()}`}>{t(`status.${status}`)}</span>;
 }
 
 // Departure and return joined by a dashed route, with the length of the stay underneath
@@ -32,17 +23,17 @@ function Route({ trip }: { trip: Trip }) {
   return (
     <div className="pass-route">
       <div>
-        <span className="pass-small muted">Departs</span>
+        <span className="pass-small muted">{t('trips.departs')}</span>
         <strong className="tabular">{formatDate(trip.departureDate)}</strong>
       </div>
       <span className="pass-route-line" aria-hidden="true">
         <PlaneIcon />
       </span>
       <div className="pass-route-end">
-        <span className="pass-small muted">Returns</span>
-        <strong className="tabular">{trip.returnDate ? formatDate(trip.returnDate) : 'Open return'}</strong>
+        <span className="pass-small muted">{t('trips.returns')}</span>
+        <strong className="tabular">{trip.returnDate ? formatDate(trip.returnDate) : t('trips.openReturn')}</strong>
       </div>
-      <p className="pass-nights muted">{nights === null ? 'No return date' : formatNights(nights)}</p>
+      <p className="pass-nights muted">{nights === null ? t('trips.noReturn') : formatNights(nights)}</p>
     </div>
   );
 }
@@ -53,7 +44,7 @@ function BoardingPass({ trip, actions }: { trip: Trip; actions: ReactNode }) {
     <article className={`pass pass-${trip.status.toLowerCase()}`}>
       <div className="pass-main">
         <p className="pass-passenger">
-          <span className="pass-small muted">Passenger</span>
+          <span className="pass-small muted">{t('trips.passenger')}</span>
           <strong>{trip.passenger.name}</strong>
         </p>
         <h2 className="pass-destination">{trip.destination.city}</h2>
@@ -64,7 +55,7 @@ function BoardingPass({ trip, actions }: { trip: Trip; actions: ReactNode }) {
       </div>
       <div className="pass-stub">
         <div>
-          <span className="pass-small muted">Price</span>
+          <span className="pass-small muted">{t('trips.price')}</span>
           <strong className="pass-price tabular">{formatPrice(trip.price, trip.currency)}</strong>
         </div>
         <StatusBadge status={trip.status} />
@@ -75,12 +66,12 @@ function BoardingPass({ trip, actions }: { trip: Trip; actions: ReactNode }) {
   );
 }
 
-const SORT_OPTIONS: SortOption[] = [
-  { value: 'departureDate,desc', label: 'Departure, latest first' },
-  { value: 'departureDate,asc', label: 'Departure, earliest first' },
+const sortOptions = (): SortOption[] => [
+  { value: 'departureDate,desc', label: t('trips.sort.departureDesc') },
+  { value: 'departureDate,asc', label: t('trips.sort.departureAsc') },
   // The API groups prices by currency first: 100 EUR and 100 BRL are not the same amount
-  { value: 'price,desc', label: 'Price, highest first (per currency)' },
-  { value: 'price,asc', label: 'Price, lowest first (per currency)' },
+  { value: 'price,desc', label: t('trips.sort.priceDesc') },
+  { value: 'price,asc', label: t('trips.sort.priceAsc') },
 ];
 
 // The selects offer the first 100 passengers and destinations, by name
@@ -130,14 +121,14 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
         <ErrorBanner message={loadError} />
         <div className="dialog-actions">
           <button type="button" className="button button-quiet" onClick={onCancel}>
-            Close
+            {t('common.close')}
           </button>
         </div>
       </>
     );
   }
 
-  if (!passengers || !destinations) return <p className="dialog-text">Loading passengers and destinations…</p>;
+  if (!passengers || !destinations) return <p className="dialog-text">{t('trips.formLoading')}</p>;
 
   const today = todayIso();
   // Dates are picked from the calendar, never typed. Nothing before today can be chosen, and the
@@ -154,9 +145,9 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
 
   return (
     <FormShell
-      submitLabel={initial ? 'Save changes' : 'Add trip'}
+      submitLabel={initial ? t('common.saveChanges') : t('trips.add')}
       onSubmit={async () => {
-        if (!departureDate) throw new Error('Choose a departure date.');
+        if (!departureDate) throw new Error(t('trips.chooseDeparture'));
         const problem = validateTripDates({ departureDate, returnDate: returnDate || null }, today, initial ?? undefined);
         if (problem) throw new Error(problem);
         await onSubmit({
@@ -171,11 +162,11 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
       }}
       onCancel={onCancel}
     >
-      {missingData && <p className="field-hint">A trip needs at least one passenger and one destination. Add them first.</p>}
-      <Field label="Passenger">
+      {missingData && <p className="field-hint">{t('trips.needData')}</p>}
+      <Field label={t('trips.passengerField')}>
         {(id) => (
           <select id={id} value={passengerId} onChange={(e) => setPassengerId(e.target.value)} required>
-            <option value="">Choose a passenger</option>
+            <option value="">{t('trips.choosePassenger')}</option>
             {passengers.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -184,48 +175,48 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
           </select>
         )}
       </Field>
-      <Field label="Destination" hint={truncated ? `Showing the first ${OPTION_LIMIT} of each list.` : undefined}>
+      <Field label={t('trips.destinationField')} hint={truncated ? t('trips.firstOnly', { limit: OPTION_LIMIT }) : undefined}>
         {(id) => (
           <select id={id} value={destinationId} onChange={(e) => setDestinationId(e.target.value)} required>
-            <option value="">Choose a destination</option>
+            <option value="">{t('trips.chooseDestination')}</option>
             {destinations.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.city}, {d.country}
+                {d.city}, {countryName(d.country)}
               </option>
             ))}
           </select>
         )}
       </Field>
       <div className="field-row">
-        <Field label="Departure date">
+        <Field label={t('trips.departureDate')}>
           {(id) => <DatePicker id={id} value={departureDate} min={today} onChange={chooseDeparture} />}
         </Field>
-        <Field label="Return date" hint="Optional">
-          {(id) => <DatePicker id={id} value={returnDate} min={minReturn} onChange={setReturnDate} clearable placeholder="No return date" />}
+        <Field label={t('trips.returnDate')} hint={t('common.optional')}>
+          {(id) => <DatePicker id={id} value={returnDate} min={minReturn} onChange={setReturnDate} clearable placeholder={t('trips.noReturnPlaceholder')} />}
         </Field>
       </div>
       <div className="field-row">
-        <Field label="Currency">
+        <Field label={t('trips.currencyField')}>
           {(id) => (
             <select id={id} value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
               {CURRENCIES.map((value) => (
                 <option key={value} value={value}>
-                  {CURRENCY_LABELS[value]}
+                  {t(`currency.${value}`)}
                 </option>
               ))}
             </select>
           )}
         </Field>
-        <Field label="Price">
+        <Field label={t('trips.priceField')}>
           {(id) => <input id={id} type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />}
         </Field>
       </div>
-      <Field label="Status">
+      <Field label={t('trips.statusField')}>
         {(id) => (
           <select id={id} value={status} onChange={(e) => setStatus(e.target.value as TripStatus)}>
             {TRIP_STATUSES.map((value) => (
               <option key={value} value={value}>
-                {STATUS_LABELS[value]}
+                {t(`status.${value}`)}
               </option>
             ))}
           </select>
@@ -257,7 +248,7 @@ function ExportButton() {
     <>
       <button type="button" className="button button-outline button-with-icon" onClick={exportTrips} disabled={busy}>
         <DownloadIcon />
-        Export CSV
+        {t('trips.export')}
       </button>
       {error && (
         <span className="muted" role="alert">
@@ -271,21 +262,18 @@ function ExportButton() {
 export function TripsPage() {
   return (
     <ListPage<Trip, TripInput>
-      title="Trips"
-      noun="trip"
-      nounPlural="trips"
+      resource="trips"
       api={tripsApi}
       filter={{
-        label: 'Status',
+        label: t('trips.statusField'),
         param: 'status',
-        options: TRIP_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] })),
+        options: TRIP_STATUSES.map((value) => ({ value, label: t(`status.${value}`) })),
       }}
       renderCard={(trip, actions) => <BoardingPass trip={trip} actions={actions} />}
-      sortOptions={SORT_OPTIONS}
+      sortOptions={sortOptions()}
       headerActions={<ExportButton />}
       renderForm={(props) => <TripForm {...props} />}
-      describe={(t) => `the trip of ${t.passenger.name} to ${t.destination.city}`}
-      emptyHint="Book the first one once you have a passenger and a destination."
+      deleteParams={(trip) => ({ passenger: trip.passenger.name, city: trip.destination.city })}
     />
   );
 }

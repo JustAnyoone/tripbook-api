@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 interface PaginationProps {
   page: number;
   size: number;
@@ -14,12 +16,12 @@ export function Pagination({ page, size, totalElements, totalPages, onPageChange
   const last = Math.min((page + 1) * size, totalElements);
 
   return (
-    <nav className="pagination" aria-label="Pagination">
+    <nav className="pagination" aria-label={t('pagination.label')}>
       <p className="pagination-range">
-        {first}–{last} of {totalElements}
+        {t('pagination.range', { first, last, total: totalElements })}
       </p>
       <label className="pagination-size">
-        Rows per page
+        {t('pagination.rows')}
         <select value={size} onChange={(event) => onSizeChange(Number(event.target.value))}>
           {PAGE_SIZES.map((option) => (
             <option key={option} value={option}>
@@ -30,7 +32,7 @@ export function Pagination({ page, size, totalElements, totalPages, onPageChange
       </label>
       <div className="pagination-buttons">
         <button type="button" className="button button-quiet" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
-          Previous
+          {t('pagination.previous')}
         </button>
         <button
           type="button"
@@ -38,7 +40,7 @@ export function Pagination({ page, size, totalElements, totalPages, onPageChange
           disabled={page + 1 >= totalPages}
           onClick={() => onPageChange(page + 1)}
         >
-          Next
+          {t('pagination.next')}
         </button>
       </div>
     </nav>

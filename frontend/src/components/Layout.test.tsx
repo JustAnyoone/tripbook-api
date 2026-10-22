@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ user: { name: 'Rhyan', email: 'r@x.com' }, logout: vi.fn() }) }));
 
+import { setLang } from '../i18n';
 import { ThemeProvider } from '../theme/theme';
 import { Layout } from './Layout';
 
@@ -47,5 +48,30 @@ describe('Layout', () => {
     await user.click(screen.getByRole('button', { name: 'Add sample data' }));
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Added 6 destinations, 4 passengers/));
+  });
+});
+
+describe('Layout language switch', () => {
+  it('shows the interface in Portuguese after the switch and back in English', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <ThemeProvider>
+        <MemoryRouter>
+          <Layout />
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+    expect(screen.getByRole('link', { name: 'Trips' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mudar para português' }));
+
+    expect(screen.getByRole('link', { name: 'Viagens' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Passageiros' })).toBeInTheDocument();
+    expect(container.querySelector('.lang-toggle')).toHaveTextContent('PT');
+
+    await user.click(screen.getByRole('button', { name: 'Switch to English' }));
+
+    expect(screen.getByRole('link', { name: 'Trips' })).toBeInTheDocument();
+    setLang('en');
   });
 });

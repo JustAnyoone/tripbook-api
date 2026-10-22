@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { t } from '../i18n';
 import { messageOf } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Field } from '../components/FormShell';
 import { Mark } from '../components/Mark';
+import { LanguageToggle } from '../components/LanguageToggle';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 interface AuthPageProps {
@@ -43,6 +45,7 @@ export function AuthPage({ mode }: AuthPageProps) {
   return (
     <main className="auth">
       <div className="auth-theme">
+        <LanguageToggle />
         <ThemeToggle />
       </div>
       <div className="auth-card">
@@ -51,26 +54,26 @@ export function AuthPage({ mode }: AuthPageProps) {
           <span className="brand-name">TripBook</span>
         </div>
         <div className="auth-body">
-          <h1>{isRegister ? 'Create your account' : 'Sign in'}</h1>
+          <h1>{isRegister ? t('auth.createTitle') : t('auth.signIn')}</h1>
           <p className="auth-lead">
-            {isRegister ? 'One account to manage passengers, destinations and trips.' : 'Welcome back. Your trips are waiting.'}
+            {isRegister ? t('auth.createLead') : t('auth.signInLead')}
           </p>
 
           {sessionExpired && !error && (
             <p className="notice" role="status">
-              Your session expired. Please sign in again.
+              {t('auth.sessionExpired')}
             </p>
           )}
 
           <form onSubmit={handleSubmit} className="form-fields">
             {isRegister && (
-              <Field label="Name">
+              <Field label={t('auth.name')}>
                 {(id) => (
                   <input id={id} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
                 )}
               </Field>
             )}
-            <Field label="Email">
+            <Field label={t('auth.email')}>
               {(id) => (
                 <input
                   id={id}
@@ -82,7 +85,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                 />
               )}
             </Field>
-            <Field label="Password" hint={isRegister ? '8 to 72 characters.' : undefined}>
+            <Field label={t('auth.password')} hint={isRegister ? t('auth.passwordHint') : undefined}>
               {(id) => (
                 <input
                   id={id}
@@ -98,18 +101,18 @@ export function AuthPage({ mode }: AuthPageProps) {
             </Field>
             {error && <ErrorBanner message={error} />}
             <button type="submit" className="button button-primary auth-submit" disabled={busy}>
-              {isRegister ? 'Create account' : 'Sign in'}
+              {isRegister ? t('auth.createAccount') : t('auth.signIn')}
             </button>
           </form>
 
           <p className="auth-switch">
             {isRegister ? (
               <>
-                Already have an account? <Link to="/login" state={location.state}>Sign in</Link>
+                {t('auth.haveAccount')} <Link to="/login" state={location.state}>{t('auth.signIn')}</Link>
               </>
             ) : (
               <>
-                New here? <Link to="/register" state={location.state}>Create an account</Link>
+                {t('auth.newHere')} <Link to="/register" state={location.state}>{t('auth.createLink')}</Link>
               </>
             )}
           </p>

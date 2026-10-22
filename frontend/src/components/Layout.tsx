@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { t, useLang } from '../i18n';
+import { LanguageToggle } from './LanguageToggle';
 import { DashboardIcon, DestinationsIcon, PassengersIcon, TripsIcon } from './icons';
 import { RefreshProvider } from './RefreshContext';
 import { SampleDataButton } from './SampleDataButton';
@@ -7,6 +9,7 @@ import { Mark } from './Mark';
 import { ThemeToggle } from './ThemeToggle';
 
 export function Layout() {
+  useLang();
   const { user, logout } = useAuth();
   return (
     <RefreshProvider>
@@ -16,42 +19,43 @@ export function Layout() {
           <Mark />
           <span className="brand-name">TripBook</span>
         </div>
-        <nav aria-label="Main" className="topnav">
+        <nav aria-label={t('nav.main')} className="topnav">
           <ul className="nav">
             <li>
               <NavLink to="/dashboard">
                 <DashboardIcon />
-                Dashboard
+                {t('nav.dashboard')}
               </NavLink>
             </li>
             <li>
               <NavLink to="/trips">
                 <TripsIcon />
-                Trips
+                {t('nav.trips')}
               </NavLink>
             </li>
             <li>
               <NavLink to="/passengers">
                 <PassengersIcon />
-                Passengers
+                {t('nav.passengers')}
               </NavLink>
             </li>
             <li>
               <NavLink to="/destinations">
                 <DestinationsIcon />
-                Destinations
+                {t('nav.destinations')}
               </NavLink>
             </li>
           </ul>
         </nav>
         <div className="account">
           <SampleDataButton />
+          <LanguageToggle />
           <ThemeToggle />
           <span className="account-name" title={user?.email}>
             {user?.name}
           </span>
           <button type="button" className="button button-outline" onClick={logout}>
-            Sign out
+            {t('common.signOut')}
           </button>
         </div>
       </header>
