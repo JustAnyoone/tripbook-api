@@ -17,6 +17,10 @@ The images below use sample data.
 |-------|------|
 | ![Trips as boarding passes, light theme](docs/screenshots/trips-light.png) | ![Trips as boarding passes, dark theme](docs/screenshots/trips-dark.png) |
 
+The same screen in Brazilian Portuguese:
+
+![Trips in Brazilian Portuguese](docs/screenshots/trips-pt.png)
+
 | Calendar date picker | Sign-in | Mobile |
 |----------------------|---------|--------|
 | ![Calendar date picker that blocks past days](docs/screenshots/calendar.png) | ![Sign-in styled as a check-in pass](docs/screenshots/sign-in.png) | ![Trips on a phone, dark theme](docs/screenshots/trips-mobile-dark.png) |
