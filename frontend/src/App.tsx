@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { t, useLang } from './i18n';
 import { RequireAuth } from './auth/RequireAuth';
 import { Layout } from './components/Layout';
 import { AuthPage } from './pages/AuthPage';
@@ -11,9 +12,12 @@ const PassengersPage = lazy(() => import('./pages/PassengersPage').then((m) => (
 const DestinationsPage = lazy(() => import('./pages/DestinationsPage').then((m) => ({ default: m.DestinationsPage })));
 
 export function App() {
+  // Every text is read when it renders. Keying the routes on the language makes the whole screen render again
+  // when it changes (an open form starts over, which is acceptable for a switch that is rarely used).
+  const lang = useLang();
   return (
-    <Suspense fallback={<p className="page-loading" role="status">Loading</p>}>
-    <Routes>
+    <Suspense fallback={<p className="page-loading" role="status">{t('common.loading')}</p>}>
+    <Routes key={lang}>
       <Route path="login" element={<AuthPage mode="login" />} />
       <Route path="register" element={<AuthPage mode="register" />} />
       <Route element={<RequireAuth />}>

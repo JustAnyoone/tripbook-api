@@ -1,5 +1,6 @@
 import '../styles/flags.css';
-import { findCountry } from '../lib/countries';
+import { t } from '../i18n';
+import { countryName, findCountry, localName } from '../lib/countries';
 
 // A country's flag as an SVG image (emoji flags do not render on Windows). Unknown countries get a globe.
 export function Flag({ country }: { country: string | null | undefined }) {
@@ -12,7 +13,7 @@ export function Flag({ country }: { country: string | null | undefined }) {
       </svg>
     );
   }
-  return <span className={`flag fi fi-${match.code}`} role="img" aria-label={`Flag of ${match.name}`} />;
+  return <span className={`flag fi fi-${match.code}`} role="img" aria-label={t('country.flagOf', { name: localName(match) })} />;
 }
 
 // Flag followed by the country as it was typed
@@ -20,7 +21,7 @@ export function CountryLabel({ country }: { country: string }) {
   return (
     <span className="country-label">
       <Flag country={country} />
-      <span>{country}</span>
+      <span>{countryName(country)}</span>
     </span>
   );
 }

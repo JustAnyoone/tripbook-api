@@ -4,13 +4,14 @@ import type { Destination, DestinationInput } from '../api/types';
 import { Field, FormShell } from '../components/FormShell';
 import { CountryPicker } from '../components/CountryPicker';
 import { CountryLabel } from '../components/Flag';
+import { t } from '../i18n';
 import { findCountry } from '../lib/countries';
 import { ListPage, type Column, type FormProps } from '../components/ListPage';
 
-const columns: Column<Destination>[] = [
-  { key: 'city', header: 'City', sortField: 'city', render: (d) => <strong>{d.city}</strong> },
-  { key: 'country', header: 'Country', sortField: 'country', render: (d) => <CountryLabel country={d.country} /> },
-  { key: 'description', header: 'Description', render: (d) => <span className="muted">{d.description ?? ''}</span> },
+const columns = (): Column<Destination>[] => [
+  { key: 'city', header: t('destinations.city'), sortField: 'city', render: (d) => <strong>{d.city}</strong> },
+  { key: 'country', header: t('destinations.country'), sortField: 'country', render: (d) => <CountryLabel country={d.country} /> },
+  { key: 'description', header: t('destinations.description'), render: (d) => <span className="muted">{d.description ?? ''}</span> },
 ];
 
 function DestinationForm({ initial, onSubmit, onCancel }: FormProps<Destination, DestinationInput>) {
@@ -20,17 +21,17 @@ function DestinationForm({ initial, onSubmit, onCancel }: FormProps<Destination,
 
   return (
     <FormShell
-      submitLabel={initial ? 'Save changes' : 'Add destination'}
+      submitLabel={initial ? t('common.saveChanges') : t('destinations.add')}
       onSubmit={() => onSubmit({ city: city.trim(), country: findCountry(country)?.name ?? country.trim(), description: description.trim() })}
       onCancel={onCancel}
     >
-      <Field label="City">
+      <Field label={t('destinations.city')}>
         {(id) => <input id={id} value={city} onChange={(e) => setCity(e.target.value)} required />}
       </Field>
-      <Field label="Country">
+      <Field label={t('destinations.country')}>
         {(id) => <CountryPicker id={id} value={country} onChange={setCountry} required />}
       </Field>
-      <Field label="Description" hint="Optional">
+      <Field label={t('destinations.description')} hint={t('common.optional')}>
         {(id) => <textarea id={id} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />}
       </Field>
     </FormShell>
@@ -40,15 +41,12 @@ function DestinationForm({ initial, onSubmit, onCancel }: FormProps<Destination,
 export function DestinationsPage() {
   return (
     <ListPage<Destination, DestinationInput>
-      title="Destinations"
-      noun="destination"
-      nounPlural="destinations"
+      resource="destinations"
       api={destinationsApi}
-      filter={{ label: 'Search by country', param: 'country', placeholder: 'Portugal' }}
-      columns={columns}
+      filter={{ label: t('destinations.searchLabel'), param: 'country', placeholder: t('destinations.searchPlaceholder') }}
+      columns={columns()}
       renderForm={(props) => <DestinationForm {...props} />}
-      describe={(d) => `${d.city}, ${d.country}`}
-      emptyHint="Add the first one to start booking trips."
+      deleteParams={(d) => ({ name: `${d.city}, ${d.country}` })}
     />
   );
 }

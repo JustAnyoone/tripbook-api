@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { passengersApi } from '../api/client';
 import type { Passenger, PassengerInput } from '../api/types';
+import { t } from '../i18n';
 import { addDays, formatDate, todayIso } from '../lib/dates';
 import { DatePicker } from '../components/DatePicker';
 import { Field, FormShell } from '../components/FormShell';
 import { ListPage, type Column, type FormProps } from '../components/ListPage';
 
-const columns: Column<Passenger>[] = [
-  { key: 'name', header: 'Name', sortField: 'name', render: (p) => <strong>{p.name}</strong> },
-  { key: 'documentNumber', header: 'Document', sortField: 'documentNumber', render: (p) => <span className="tabular">{p.documentNumber}</span> },
-  { key: 'email', header: 'Email', sortField: 'email', render: (p) => p.email },
-  { key: 'birthDate', header: 'Born', render: (p) => <span className="tabular">{formatDate(p.birthDate)}</span> },
+const columns = (): Column<Passenger>[] => [
+  { key: 'name', header: t('passengers.name'), sortField: 'name', render: (p) => <strong>{p.name}</strong> },
+  { key: 'documentNumber', header: t('passengers.document'), sortField: 'documentNumber', render: (p) => <span className="tabular">{p.documentNumber}</span> },
+  { key: 'email', header: t('passengers.email'), sortField: 'email', render: (p) => p.email },
+  { key: 'birthDate', header: t('passengers.born'), render: (p) => <span className="tabular">{formatDate(p.birthDate)}</span> },
 ];
 
 function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, PassengerInput>) {
@@ -21,7 +22,7 @@ function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, Pas
 
   return (
     <FormShell
-      submitLabel={initial ? 'Save changes' : 'Add passenger'}
+      submitLabel={initial ? t('common.saveChanges') : t('passengers.add')}
       onSubmit={() =>
         onSubmit({
           name: name.trim(),
@@ -32,25 +33,25 @@ function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, Pas
       }
       onCancel={onCancel}
     >
-      <Field label="Name">
+      <Field label={t('passengers.name')}>
         {(id) => <input id={id} value={name} onChange={(e) => setName(e.target.value)} required />}
       </Field>
-      <Field label="Document number" hint="6 to 20 letters or digits. Each passenger needs a different one.">
+      <Field label={t('passengers.documentNumber')} hint={t('passengers.documentHint')}>
         {(id) => (
           <input
             id={id}
             value={documentNumber}
             onChange={(e) => setDocumentNumber(e.target.value)}
             pattern="[A-Za-z0-9]{6,20}"
-            title="6 to 20 letters or digits"
+            title={t('passengers.documentTitle')}
             required
           />
         )}
       </Field>
-      <Field label="Email">
+      <Field label={t('passengers.email')}>
         {(id) => <input id={id} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}
       </Field>
-      <Field label="Birth date" hint="Optional">
+      <Field label={t('passengers.birthDate')} hint={t('common.optional')}>
         {(id) => (
           <DatePicker
             id={id}
@@ -59,7 +60,7 @@ function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, Pas
             max={addDays(todayIso(), -1)}
             jump
             clearable
-            placeholder="Select a birth date"
+            placeholder={t('passengers.birthPlaceholder')}
           />
         )}
       </Field>
@@ -70,16 +71,12 @@ function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, Pas
 export function PassengersPage() {
   return (
     <ListPage<Passenger, PassengerInput>
-      title="Passengers"
-      noun="passenger"
-      nounPlural="passengers"
+      resource="passengers"
       api={passengersApi}
-      filter={{ label: 'Search by name', param: 'name', placeholder: 'Ana' }}
-      columns={columns}
+      filter={{ label: t('passengers.searchLabel'), param: 'name', placeholder: t('passengers.searchPlaceholder') }}
+      columns={columns()}
       renderForm={(props) => <PassengerForm {...props} />}
-      describe={(p) => p.name}
-      deleteNote="Their trips are deleted too."
-      emptyHint="Add a passenger before booking a trip."
+      deleteParams={(p) => ({ name: p.name })}
     />
   );
 }

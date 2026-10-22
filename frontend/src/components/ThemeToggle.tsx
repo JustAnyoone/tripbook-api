@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useTheme } from '../theme/theme';
 
 // Sun in dark mode (go light), moon in light mode (go dark)
@@ -5,7 +6,7 @@ export function ThemeToggle() {
   const { theme, toggle } = useTheme();
   const toDark = theme === 'light';
   return (
-    <button type="button" className="theme-toggle" onClick={toggle} aria-label={toDark ? 'Switch to dark mode' : 'Switch to light mode'}>
+    <button type="button" className="theme-toggle" onClick={toggle} aria-label={toDark ? t('theme.toDark') : t('theme.toLight')}>
       {toDark ? (
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
           <path d="M14.5 10.8A6 6 0 0 1 7.2 3.5a6 6 0 1 0 7.3 7.3Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />

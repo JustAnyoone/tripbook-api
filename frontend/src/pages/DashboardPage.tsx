@@ -5,9 +5,9 @@ import type { Dashboard, TripStatus } from '../api/types';
 import { CountryLabel } from '../components/Flag';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { useRefresh } from '../components/RefreshContext';
+import { plural, t } from '../i18n';
 import { formatDate, formatPrice } from '../lib/dates';
 
-const STATUS_LABELS: Record<TripStatus, string> = { PENDING: 'Pending', CONFIRMED: 'Confirmed', CANCELLED: 'Cancelled' };
 const STATUS_ORDER: TripStatus[] = ['CONFIRMED', 'PENDING', 'CANCELLED'];
 
 // First screen after signing in: how much is booked, what is coming up and where the trips go
@@ -36,9 +36,9 @@ export function DashboardPage() {
     return (
       <section aria-busy="true">
         <header className="page-header">
-          <h1>Dashboard</h1>
+          <h1>{t('dashboard.title')}</h1>
         </header>
-        <p className="visually-hidden" role="status">Loading</p>
+        <p className="visually-hidden" role="status">{t('common.loading')}</p>
         <div className="stat-grid" aria-hidden="true">
           {[0, 1, 2, 3].map((index) => (
             <div className="stat skeleton skeleton-stat" key={index} />
@@ -60,11 +60,12 @@ export function DashboardPage() {
     return (
       <section>
         <header className="page-header">
-          <h1>Dashboard</h1>
+          <h1>{t('dashboard.title')}</h1>
         </header>
         <p className="empty-note">
-          Nothing booked yet. Add a passenger and a destination, then <Link to="/trips">book the first trip</Link>, or use
-          Sample data at the top to see how it looks.
+          {t('dashboard.emptyBefore')}
+          <Link to="/trips">{t('dashboard.emptyLink')}</Link>
+          {t('dashboard.emptyAfter')}
         </p>
       </section>
     );
@@ -74,32 +75,32 @@ export function DashboardPage() {
     <section>
       <header className="page-header">
         <div>
-          <h1>Dashboard</h1>
-          <p className="page-count">{totalTrips} {totalTrips === 1 ? 'trip' : 'trips'} in total</p>
+          <h1>{t('dashboard.title')}</h1>
+          <p className="page-count">{plural('dashboard.total', totalTrips)}</p>
         </div>
       </header>
 
       <div className="stat-grid">
         {STATUS_ORDER.map((status) => (
           <div className={`stat stat-${status.toLowerCase()}`} key={status}>
-            <span className="stat-label">{STATUS_LABELS[status]}</span>
+            <span className="stat-label">{t(`status.${status}`)}</span>
             <strong className="stat-value tabular">{counts.get(status) ?? 0}</strong>
           </div>
         ))}
         {data.totals.map((row) => (
           <div className="stat" key={row.currency}>
-            <span className="stat-label">Booked in {row.currency}</span>
+            <span className="stat-label">{t('dashboard.bookedIn', { currency: row.currency })}</span>
             <strong className="stat-value tabular">{formatPrice(row.total, row.currency)}</strong>
-            <span className="stat-note">{row.trips} {row.trips === 1 ? 'trip' : 'trips'}, cancelled not counted</span>
+            <span className="stat-note">{plural('dashboard.bookedNote', row.trips)}</span>
           </div>
         ))}
       </div>
 
       <div className="dashboard-columns">
         <div className="panel">
-          <h2>Next departures</h2>
+          <h2>{t('dashboard.next')}</h2>
           {data.upcoming.length === 0 ? (
-            <p className="muted">No upcoming trips.</p>
+            <p className="muted">{t('dashboard.noUpcoming')}</p>
           ) : (
             <ul className="panel-list">
               {data.upcoming.map((trip) => (
@@ -119,9 +120,9 @@ export function DashboardPage() {
         </div>
 
         <div className="panel">
-          <h2>Most visited destinations</h2>
+          <h2>{t('dashboard.top')}</h2>
           {data.topDestinations.length === 0 ? (
-            <p className="muted">No trips yet.</p>
+            <p className="muted">{t('dashboard.noTrips')}</p>
           ) : (
             <ul className="panel-list">
               {data.topDestinations.map((row) => (
@@ -135,7 +136,7 @@ export function DashboardPage() {
                       <span style={{ width: `${(row.trips / maxTrips) * 100}%` }} />
                     </div>
                   </div>
-                  <span className="tabular">{row.trips} {row.trips === 1 ? 'trip' : 'trips'}</span>
+                  <span className="tabular">{plural('dashboard.trips', row.trips)}</span>
                 </li>
               ))}
             </ul>

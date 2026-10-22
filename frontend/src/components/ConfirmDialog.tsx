@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { messageOf } from '../api/client';
+import { t } from '../i18n';
 import { Dialog } from './Dialog';
 import { ErrorBanner } from './ErrorBanner';
 
@@ -35,7 +36,7 @@ export function ConfirmDialog({ title, message, confirmLabel, tone = 'danger', o
       {error && <ErrorBanner message={error} />}
       <div className="dialog-actions">
         <button type="button" className="button button-quiet" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button type="button" className={`button button-${tone}`} onClick={confirm} disabled={busy}>
           {confirmLabel}

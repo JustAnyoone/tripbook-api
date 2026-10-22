@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { getLang, t } from '../i18n';
 import { addDays, addMonths, formatDate, parse, todayIso } from '../lib/dates';
 
 interface DatePickerProps {
@@ -17,12 +18,15 @@ interface DatePickerProps {
   clearable?: boolean;
 }
 
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const MONTH_NAMES = Array.from({ length: 12 }, (_, month) =>
-  new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date(2000, month, 1)),
-);
-const monthTitle = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
-const dayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const WEEKDAYS = { en: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], pt: ['Do', 'Se', 'Te', 'Qu', 'Qu', 'Se', 'Sá'] };
+
+// Intl writes pt-BR month and weekday names in lower case; a calendar reads better with a capital
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+const calendarLocale = () => (getLang() === 'pt' ? 'pt-BR' : 'en-US');
+const monthNames = () =>
+  Array.from({ length: 12 }, (_, month) => capital(new Intl.DateTimeFormat(calendarLocale(), { month: 'long' }).format(new Date(2000, month, 1))));
+const monthTitle = { format: (date: Date) => capital(new Intl.DateTimeFormat(calendarLocale(), { month: 'long', year: 'numeric' }).format(date)) };
+const dayLabel = { format: (date: Date) => capital(new Intl.DateTimeFormat(calendarLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date)) };
 
 function firstOfMonth(iso: string): string {
   return `${iso.slice(0, 7)}-01`;
@@ -37,7 +41,7 @@ function monthGrid(monthStart: string): string[] {
 
 // Notion-style date field: a button that opens a month calendar. Dates are picked, never typed,
 // so an impossible date such as 31 Nov cannot be entered and days before `min` cannot be chosen.
-export function DatePicker({ id, value, onChange, min, max, jump = false, placeholder = 'Select a date', clearable = false }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, min, max, jump = false, placeholder = t('date.placeholder'), clearable = false }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState('');
   const [position, setPosition] = useState<CSSProperties>({});
@@ -180,7 +184,7 @@ export function DatePicker({ id, value, onChange, min, max, jump = false, placeh
           id={popoverId}
           className="datepicker-popover"
           role="dialog"
-          aria-label="Choose a date"
+          aria-label={t('date.choose')}
           style={position}
           onKeyDown={onPopoverKeyDown}
         >
@@ -188,17 +192,17 @@ export function DatePicker({ id, value, onChange, min, max, jump = false, placeh
             {jump ? (
               <div className="datepicker-jump">
                 <select
-                  aria-label="Month"
+                  aria-label={t('date.month')}
                   value={shownMonth}
                   onChange={(event) => jumpTo(shownYear, Number(event.target.value))}
                 >
-                  {MONTH_NAMES.map((name, month) => (
+                  {monthNames().map((name, month) => (
                     <option key={name} value={month}>
                       {name}
                     </option>
                   ))}
                 </select>
-                <select aria-label="Year" value={shownYear} onChange={(event) => jumpTo(Number(event.target.value), shownMonth)}>
+                <select aria-label={t('date.year')} value={shownYear} onChange={(event) => jumpTo(Number(event.target.value), shownMonth)}>
                   {years.map((year) => (
                     <option key={year} value={year}>
                       {year}
@@ -213,7 +217,7 @@ export function DatePicker({ id, value, onChange, min, max, jump = false, placeh
               <button
                 type="button"
                 className="datepicker-nav-button"
-                aria-label="Previous month"
+                aria-label={t('date.previousMonth')}
                 disabled={!canGoBack}
                 onClick={() => move(clamp(addMonths(monthStart, -1)))}
               >
@@ -222,7 +226,7 @@ export function DatePicker({ id, value, onChange, min, max, jump = false, placeh
               <button
                 type="button"
                 className="datepicker-nav-button"
-                aria-label="Next month"
+                aria-label={t('date.nextMonth')}
                 disabled={!canGoForward}
                 onClick={() => move(clamp(addMonths(monthStart, 1)))}
               >
@@ -233,8 +237,8 @@ export function DatePicker({ id, value, onChange, min, max, jump = false, placeh
 
           <div role="grid" aria-label={monthTitle.format(parse(monthStart))} onKeyDown={onGridKeyDown}>
             <div role="row" className="datepicker-row">
-              {WEEKDAYS.map((weekday) => (
-                <span key={weekday} role="columnheader" className="datepicker-weekday">
+              {WEEKDAYS[getLang()].map((weekday, index) => (
+                <span key={index} role="columnheader" className="datepicker-weekday">
                   {weekday}
                 </span>
               ))}
@@ -270,7 +274,7 @@ export function DatePicker({ id, value, onChange, min, max, jump = false, placeh
 
           <div className="datepicker-footer">
             <button type="button" className="datepicker-link" disabled={isDisabled(today)} onClick={() => choose(today)}>
-              Today
+              {t('date.today')}
             </button>
             {clearable && value && (
               <button
@@ -281,7 +285,7 @@ export function DatePicker({ id, value, onChange, min, max, jump = false, placeh
                   closePopover(true);
                 }}
               >
-                Clear
+                {t('date.clear')}
               </button>
             )}
           </div>
