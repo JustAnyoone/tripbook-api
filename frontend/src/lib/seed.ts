@@ -56,36 +56,34 @@ const key = (...parts: string[]) => parts.map((part) => part.trim().toLowerCase(
 export async function loadSampleData(): Promise<SeedResult> {
   const result: SeedResult = { destinations: 0, passengers: 0, trips: 0 };
 
+  const [existingDestinations, existingPassengers] = await Promise.all([all(destinationsApi.list), all(passengersApi.list)]);
   const destinations = new Map<string, Destination>();
-  for (const existing of await all(destinationsApi.list)) destinations.set(key(existing.city, existing.country), existing);
-  for (const input of DESTINATIONS) {
-    const id = key(input.city, input.country);
-    if (!destinations.has(id)) {
-      destinations.set(id, await destinationsApi.create(input));
-      result.destinations++;
-    }
+  for (const existing of existingDestinations) destinations.set(key(existing.city, existing.country), existing);
+  // Created in parallel: the three groups are independent of each other until the trips
+  const missingDestinations = DESTINATIONS.filter((input) => !destinations.has(key(input.city, input.country)));
+  for (const created of await Promise.all(missingDestinations.map((input) => destinationsApi.create(input)))) {
+    destinations.set(key(created.city, created.country), created);
+    result.destinations++;
   }
 
   const passengers = new Map<string, Passenger>();
-  for (const existing of await all(passengersApi.list)) passengers.set(existing.documentNumber.toLowerCase(), existing);
-  for (const input of PASSENGERS) {
-    const id = input.documentNumber.toLowerCase();
-    if (!passengers.has(id)) {
-      passengers.set(id, await passengersApi.create(input));
-      result.passengers++;
-    }
+  for (const existing of existingPassengers) passengers.set(existing.documentNumber.toLowerCase(), existing);
+  const missingPassengers = PASSENGERS.filter((input) => !passengers.has(input.documentNumber.toLowerCase()));
+  for (const created of await Promise.all(missingPassengers.map((input) => passengersApi.create(input)))) {
+    passengers.set(created.documentNumber.toLowerCase(), created);
+    result.passengers++;
   }
 
   const trips = new Set((await all(tripsApi.list)).map((t) => key(String(t.passenger.id), String(t.destination.id), t.price.toString(), t.currency)));
   const today = todayIso();
+  const inputs: TripInput[] = [];
   for (const plan of TRIPS) {
     const passenger = passengers.get(plan.passenger.toLowerCase());
     const destination = [...destinations.values()].find((d) => d.city === plan.destination);
     if (!passenger || !destination) continue;
-    const id = key(String(passenger.id), String(destination.id), plan.price.toString(), plan.currency);
-    if (trips.has(id)) continue;
+    if (trips.has(key(String(passenger.id), String(destination.id), plan.price.toString(), plan.currency))) continue;
     const departureDate = addDays(today, plan.departureInDays);
-    await tripsApi.create({
+    inputs.push({
       departureDate,
       returnDate: plan.stayDays === null ? null : addDays(departureDate, plan.stayDays),
       price: plan.price,
@@ -93,9 +91,9 @@ export async function loadSampleData(): Promise<SeedResult> {
       status: plan.status,
       passengerId: passenger.id,
       destinationId: destination.id,
-    } satisfies TripInput);
-    trips.add(id);
-    result.trips++;
+    });
   }
+  await Promise.all(inputs.map((input) => tripsApi.create(input)));
+  result.trips = inputs.length;
   return result;
 }

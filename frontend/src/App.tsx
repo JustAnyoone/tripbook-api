@@ -1,13 +1,17 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from './auth/RequireAuth';
 import { Layout } from './components/Layout';
 import { AuthPage } from './pages/AuthPage';
-import { DestinationsPage } from './pages/DestinationsPage';
-import { PassengersPage } from './pages/PassengersPage';
-import { TripsPage } from './pages/TripsPage';
+
+// Each page is its own chunk, so the first screen downloads only the code it needs
+const TripsPage = lazy(() => import('./pages/TripsPage').then((m) => ({ default: m.TripsPage })));
+const PassengersPage = lazy(() => import('./pages/PassengersPage').then((m) => ({ default: m.PassengersPage })));
+const DestinationsPage = lazy(() => import('./pages/DestinationsPage').then((m) => ({ default: m.DestinationsPage })));
 
 export function App() {
   return (
+    <Suspense fallback={<p className="page-loading" role="status">Loading</p>}>
     <Routes>
       <Route path="login" element={<AuthPage mode="login" />} />
       <Route path="register" element={<AuthPage mode="register" />} />
@@ -21,5 +25,6 @@ export function App() {
         </Route>
       </Route>
     </Routes>
+    </Suspense>
   );
 }
