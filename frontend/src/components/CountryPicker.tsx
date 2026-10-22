@@ -12,10 +12,14 @@ interface CountryPickerProps {
 
 // Search box with a list of countries and their flags. The user can type "bra" and pick Brazil,
 // or scroll the list. The text can be edited freely; the form decides whether it names a country.
+const CHUNK = 40;
+
 export function CountryPicker({ id, value, onChange, required }: CountryPickerProps) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [position, setPosition] = useState<CSSProperties>({});
+  // Each row loads a flag image, so a long list is rendered in chunks as the user scrolls
+  const [visible, setVisible] = useState(CHUNK);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const listId = useId();
@@ -23,6 +27,7 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
   // While the box shows an exact country there is nothing to narrow down: show the whole list
   const matches: Country[] = findCountry(value) ? searchCountries('') : searchCountries(value);
   const current = Math.min(active, Math.max(matches.length - 1, 0));
+  const shown = Math.max(visible, current + 1);
 
   useLayoutEffect(() => {
     if (!open || !inputRef.current) return;
@@ -87,6 +92,7 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
         onChange={(event) => {
           onChange(event.target.value);
           setActive(0);
+          setVisible(CHUNK);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
@@ -94,9 +100,19 @@ export function CountryPicker({ id, value, onChange, required }: CountryPickerPr
         onKeyDown={onKeyDown}
       />
       {open && (
-        <ul ref={listRef} id={listId} role="listbox" className="combobox-list" style={position}>
+        <ul
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          className="combobox-list"
+          style={position}
+          onScroll={(event) => {
+            const list = event.currentTarget;
+            if (list.scrollTop + list.clientHeight >= list.scrollHeight - 60) setVisible((count) => count + CHUNK);
+          }}
+        >
           {matches.length === 0 && <li className="combobox-empty">No country matches “{value}”.</li>}
-          {matches.map((country, index) => (
+          {matches.slice(0, shown).map((country, index) => (
             <li
               key={country.code}
               id={`${listId}-${country.code}`}

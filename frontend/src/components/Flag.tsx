@@ -1,4 +1,4 @@
-import 'flag-icons/css/flag-icons.min.css';
+import '../styles/flags.css';
 import { findCountry } from '../lib/countries';
 
 // A country's flag as an SVG image (emoji flags do not render on Windows). Unknown countries get a globe.
