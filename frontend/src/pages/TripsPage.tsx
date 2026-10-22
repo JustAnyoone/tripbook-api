@@ -3,6 +3,8 @@ import { destinationsApi, messageOf, passengersApi, tripsApi } from '../api/clie
 import { CURRENCIES, TRIP_STATUSES, type Currency, type Destination, type Passenger, type Trip, type TripInput, type TripStatus } from '../api/types';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Field, FormShell } from '../components/FormShell';
+import { PlaneIcon } from '../components/icons';
+import { CountryLabel } from '../components/Flag';
 import { DatePicker } from '../components/DatePicker';
 import { ListPage, type FormProps, type SortOption } from '../components/ListPage';
 import { formatDate, formatNights, formatPrice, nightsBetween, todayIso, validateTripDates } from '../lib/dates';
@@ -33,9 +35,7 @@ function Route({ trip }: { trip: Trip }) {
         <strong className="tabular">{formatDate(trip.departureDate)}</strong>
       </div>
       <span className="pass-route-line" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 18 18">
-          <path d="M16.2 8.1 2.6 3.2c-.5-.2-1 .3-.8.8l2 4.1-1.9.9v1.8l3.1-.4 1.5 3.6h1.6l-.4-3.7 6.1-.9 1.8 1.4c.4.3 1 .1 1.2-.4l.1-.4c.1-.4-.1-.7-.4-.9l-2.1-1.3.1-.6c0-.3-.1-.6-.5-.6Z" fill="currentColor" />
-        </svg>
+        <PlaneIcon />
       </span>
       <div className="pass-route-end">
         <span className="pass-small muted">Returns</span>
@@ -56,7 +56,9 @@ function BoardingPass({ trip, actions }: { trip: Trip; actions: ReactNode }) {
           <strong>{trip.passenger.name}</strong>
         </p>
         <h2 className="pass-destination">{trip.destination.city}</h2>
-        <p className="pass-country muted">{trip.destination.country}</p>
+        <p className="pass-country muted">
+          <CountryLabel country={trip.destination.country} />
+        </p>
         <Route trip={trip} />
       </div>
       <div className="pass-stub">

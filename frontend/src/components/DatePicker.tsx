@@ -8,12 +8,19 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   /** Earliest day that can be chosen, "yyyy-MM-dd" */
   min?: string;
+  /** Latest day that can be chosen, "yyyy-MM-dd" */
+  max?: string;
+  /** Shows month and year selects in the header, for dates far from today such as a birth date */
+  jump?: boolean;
   placeholder?: string;
   /** Shows a Clear button; for optional dates */
   clearable?: boolean;
 }
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const MONTH_NAMES = Array.from({ length: 12 }, (_, month) =>
+  new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date(2000, month, 1)),
+);
 const monthTitle = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 const dayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -30,12 +37,14 @@ function monthGrid(monthStart: string): string[] {
 
 // Notion-style date field: a button that opens a month calendar. Dates are picked, never typed,
 // so an impossible date such as 31 Nov cannot be entered and days before `min` cannot be chosen.
-export function DatePicker({ id, value, onChange, min, placeholder = 'Select a date', clearable = false }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, min, max, jump = false, placeholder = 'Select a date', clearable = false }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState('');
   const [position, setPosition] = useState<CSSProperties>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  // Keyboard focus follows the highlighted day, except while the user works the month/year selects
+  const followFocus = useRef(true);
   const popoverId = useId();
   const today = todayIso();
 
@@ -45,9 +54,9 @@ export function DatePicker({ id, value, onChange, min, placeholder = 'Select a d
   }, []);
 
   function openPopover() {
-    // Start on the chosen day, or on the first day that can be picked
-    const start = value || (min && min > today ? min : today);
-    setFocused(min && start < min ? min : start);
+    // Start on the chosen day, or on the day closest to today that can be picked
+    followFocus.current = true;
+    setFocused(clamp(value || today));
     setOpen(true);
   }
 
@@ -66,7 +75,7 @@ export function DatePicker({ id, value, onChange, min, placeholder = 'Select a d
 
   // Keep keyboard focus on the highlighted day
   useEffect(() => {
-    if (!open) return;
+    if (!open || !followFocus.current) return;
     popoverRef.current?.querySelector<HTMLElement>(`[data-date="${focused}"]`)?.focus();
   }, [open, focused]);
 
@@ -81,13 +90,20 @@ export function DatePicker({ id, value, onChange, min, placeholder = 'Select a d
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [open, closePopover]);
 
-  const isDisabled = (iso: string) => Boolean(min) && iso < (min as string);
+  function isDisabled(iso: string) {
+    return Boolean((min && iso < min) || (max && iso > max));
+  }
 
   // Never park the keyboard focus on a day that cannot be chosen
-  const clamp = (iso: string) => (min && iso < min ? min : iso);
+  function clamp(iso: string) {
+    if (min && iso < min) return min;
+    if (max && iso > max) return max;
+    return iso;
+  }
 
   function move(iso: string) {
     if (isDisabled(iso)) return;
+    followFocus.current = true;
     setFocused(iso);
   }
 
@@ -98,7 +114,7 @@ export function DatePicker({ id, value, onChange, min, placeholder = 'Select a d
       ArrowUp: () => addDays(focused, -7),
       ArrowDown: () => addDays(focused, 7),
       PageUp: () => clamp(addMonths(focused, -1)),
-      PageDown: () => addMonths(focused, 1),
+      PageDown: () => clamp(addMonths(focused, 1)),
       Home: () => addDays(focused, -parse(focused).getDay()),
       End: () => addDays(focused, 6 - parse(focused).getDay()),
     };
@@ -127,6 +143,17 @@ export function DatePicker({ id, value, onChange, min, placeholder = 'Select a d
   const days = open ? monthGrid(monthStart) : [];
   const previousMonthEnd = addDays(monthStart, -1);
   const canGoBack = !min || previousMonthEnd >= min;
+  const canGoForward = !max || addMonths(monthStart, 1) <= max;
+  const shownYear = Number(monthStart.slice(0, 4));
+  const shownMonth = Number(monthStart.slice(5, 7)) - 1;
+  const firstYear = min ? Number(min.slice(0, 4)) : Math.min(shownYear, Number(today.slice(0, 4))) - 100;
+  const lastYear = max ? Number(max.slice(0, 4)) : Math.max(shownYear, Number(today.slice(0, 4))) + 10;
+  const years = Array.from({ length: Math.max(lastYear - firstYear + 1, 1) }, (_, index) => lastYear - index);
+
+  function jumpTo(year: number, month: number) {
+    followFocus.current = false;
+    setFocused(clamp(`${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-01`));
+  }
 
   return (
     <div className="datepicker">
@@ -158,14 +185,37 @@ export function DatePicker({ id, value, onChange, min, placeholder = 'Select a d
           onKeyDown={onPopoverKeyDown}
         >
           <div className="datepicker-header">
-            <strong aria-live="polite">{monthTitle.format(parse(monthStart))}</strong>
+            {jump ? (
+              <div className="datepicker-jump">
+                <select
+                  aria-label="Month"
+                  value={shownMonth}
+                  onChange={(event) => jumpTo(shownYear, Number(event.target.value))}
+                >
+                  {MONTH_NAMES.map((name, month) => (
+                    <option key={name} value={month}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <select aria-label="Year" value={shownYear} onChange={(event) => jumpTo(Number(event.target.value), shownMonth)}>
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <strong aria-live="polite">{monthTitle.format(parse(monthStart))}</strong>
+            )}
             <div className="datepicker-nav">
               <button
                 type="button"
                 className="datepicker-nav-button"
                 aria-label="Previous month"
                 disabled={!canGoBack}
-                onClick={() => setFocused(clamp(addMonths(monthStart, -1)))}
+                onClick={() => move(clamp(addMonths(monthStart, -1)))}
               >
                 ‹
               </button>
@@ -173,7 +223,8 @@ export function DatePicker({ id, value, onChange, min, placeholder = 'Select a d
                 type="button"
                 className="datepicker-nav-button"
                 aria-label="Next month"
-                onClick={() => setFocused(addMonths(monthStart, 1))}
+                disabled={!canGoForward}
+                onClick={() => move(clamp(addMonths(monthStart, 1)))}
               >
                 ›
               </button>

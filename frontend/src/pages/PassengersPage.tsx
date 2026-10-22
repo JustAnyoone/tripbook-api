@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { passengersApi } from '../api/client';
 import type { Passenger, PassengerInput } from '../api/types';
-import { formatDate } from '../lib/dates';
+import { addDays, formatDate, todayIso } from '../lib/dates';
+import { DatePicker } from '../components/DatePicker';
 import { Field, FormShell } from '../components/FormShell';
 import { ListPage, type Column, type FormProps } from '../components/ListPage';
 
@@ -50,7 +51,17 @@ function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, Pas
         {(id) => <input id={id} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}
       </Field>
       <Field label="Birth date" hint="Optional">
-        {(id) => <input id={id} type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />}
+        {(id) => (
+          <DatePicker
+            id={id}
+            value={birthDate}
+            onChange={setBirthDate}
+            max={addDays(todayIso(), -1)}
+            jump
+            clearable
+            placeholder="Select a birth date"
+          />
+        )}
       </Field>
     </FormShell>
   );
