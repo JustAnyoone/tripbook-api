@@ -32,7 +32,25 @@ export function DashboardPage() {
   }, [version]);
 
   if (error) return <ErrorBanner message={error} />;
-  if (!data) return <p className="page-loading" role="status">Loading</p>;
+  if (!data) {
+    return (
+      <section aria-busy="true">
+        <header className="page-header">
+          <h1>Dashboard</h1>
+        </header>
+        <p className="visually-hidden" role="status">Loading</p>
+        <div className="stat-grid" aria-hidden="true">
+          {[0, 1, 2, 3].map((index) => (
+            <div className="stat skeleton skeleton-stat" key={index} />
+          ))}
+        </div>
+        <div className="dashboard-columns" aria-hidden="true">
+          <div className="panel skeleton skeleton-panel" />
+          <div className="panel skeleton skeleton-panel" />
+        </div>
+      </section>
+    );
+  }
 
   const counts = new Map(data.statusCounts.map((row) => [row.status, row.trips]));
   const totalTrips = data.statusCounts.reduce((sum, row) => sum + row.trips, 0);

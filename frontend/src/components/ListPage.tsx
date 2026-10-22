@@ -218,6 +218,7 @@ export function ListPage<T extends { id: number }, I>({
             {rows.map((item) => (
               <li key={item.id}>{renderCard(item, actionsFor(item))}</li>
             ))}
+            {!data && loading && [0, 1, 2].map((index) => <li key={index} className="skeleton skeleton-card" aria-hidden="true" />)}
           </ul>
         ) : (
           <table>
@@ -257,11 +258,19 @@ export function ListPage<T extends { id: number }, I>({
                   <td className="cell-actions">{actionsFor(item)}</td>
                 </tr>
               ))}
+              {!data && loading &&
+                [0, 1, 2, 3, 4].map((index) => (
+                  <tr key={index} className="skeleton-row" aria-hidden="true">
+                    <td colSpan={columns.length + 1}>
+                      <span className="skeleton skeleton-line" />
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         )}
 
-        {!data && loading && <p className="table-message">Loading {nounPlural}…</p>}
+        {!data && loading && <p className="visually-hidden" role="status">Loading {nounPlural}…</p>}
         {data && rows.length === 0 && !loading && (
           <div className="table-message">
             {hasFilter ? (

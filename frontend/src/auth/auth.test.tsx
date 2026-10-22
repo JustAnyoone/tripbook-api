@@ -123,6 +123,7 @@ describe('authentication flow', () => {
     renderApp('/trips');
 
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.getByText('Your session expired. Please sign in again.')).toBeInTheDocument();
     expect(getToken()).toBeNull();
   });
 
@@ -153,6 +154,8 @@ describe('authentication flow', () => {
     await user.click(await screen.findByRole('button', { name: 'Sign out' }));
 
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    // Signing out on purpose is not an expired session
+    expect(screen.queryByText(/session expired/)).not.toBeInTheDocument();
     await waitFor(() => expect(getToken()).toBeNull());
   });
 });

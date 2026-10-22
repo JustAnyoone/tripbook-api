@@ -12,7 +12,7 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ mode }: AuthPageProps) {
-  const { status, login, register } = useAuth();
+  const { status, sessionExpired, login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [name, setName] = useState('');
@@ -55,6 +55,12 @@ export function AuthPage({ mode }: AuthPageProps) {
           <p className="auth-lead">
             {isRegister ? 'One account to manage passengers, destinations and trips.' : 'Welcome back. Your trips are waiting.'}
           </p>
+
+          {sessionExpired && !error && (
+            <p className="notice" role="status">
+              Your session expired. Please sign in again.
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="form-fields">
             {isRegister && (

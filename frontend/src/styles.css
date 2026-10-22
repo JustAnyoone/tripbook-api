@@ -1311,3 +1311,54 @@ th[aria-sort='descending'] {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
+/* Loading placeholders: grey shapes where the content will be, so the page does not jump */
+.skeleton {
+  background: linear-gradient(90deg, var(--hover) 25%, transparent 50%, var(--hover) 75%) 0 0 / 200% 100%, var(--hover);
+  animation: skeleton-shine 1.4s ease-in-out infinite;
+  border-radius: var(--radius);
+}
+
+.skeleton-card {
+  height: 10.5rem;
+  list-style: none;
+}
+
+.skeleton-line {
+  display: block;
+  height: 1.1rem;
+}
+
+.skeleton-stat {
+  height: 6rem;
+  border: 0;
+}
+
+.skeleton-panel {
+  height: 12rem;
+  border: 0;
+}
+
+.skeleton-row td {
+  padding: 0.9rem 1rem;
+}
+
+.notice {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius);
+  background: var(--sky-wash);
+  color: var(--ink);
+}
+
+@keyframes skeleton-shine {
+  to {
+    background-position: -200% 0, 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

@@ -9,6 +9,8 @@ type Status = 'checking' | 'signed-in' | 'signed-out';
 interface AuthValue {
   status: Status;
   user: User | null;
+  /** True after the server rejected the token, so the login page can say why the user is back there */
+  sessionExpired: boolean;
   login: (credentials: Credentials) => Promise<void>;
   register: (registration: Registration) => Promise<void>;
   logout: () => void;
@@ -19,6 +21,7 @@ const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>(() => (getToken() ? 'checking' : 'signed-out'));
   const [user, setUser] = useState<User | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const logout = useCallback(() => {
     clearToken();
@@ -26,7 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signed-out');
   }, []);
 
+  // The server refused the token (it expired, or the account is gone): end the session and say so
+  const expireSession = useCallback(() => {
+    setSessionExpired(true);
+    logout();
+  }, [logout]);
+
   const startSession = useCallback((result: AuthResult) => {
+    setSessionExpired(false);
     saveToken(result.token);
     setUser(result.user);
     setStatus('signed-in');
@@ -34,9 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // An expired or rejected token ends the session wherever the user is
   useEffect(() => {
-    setUnauthorizedHandler(logout);
+    setUnauthorizedHandler(expireSession);
     return () => setUnauthorizedHandler(null);
-  }, [logout]);
+  }, [expireSession]);
 
   // A token found in storage is checked with the API before the app trusts it
   useEffect(() => {
@@ -50,22 +60,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setStatus('signed-in');
       })
       .catch(() => {
-        if (!cancelled) logout();
+        if (!cancelled) expireSession();
       });
     return () => {
       cancelled = true;
     };
-  }, [logout]);
+  }, [expireSession]);
 
   const value = useMemo<AuthValue>(
     () => ({
       status,
       user,
+      sessionExpired,
       login: async (credentials) => startSession(await authApi.login(credentials)),
       register: async (registration) => startSession(await authApi.register(registration)),
       logout,
     }),
-    [status, user, startSession, logout],
+    [status, user, sessionExpired, startSession, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
