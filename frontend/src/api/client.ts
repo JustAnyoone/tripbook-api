@@ -2,6 +2,7 @@ import { getToken } from '../auth/token';
 import type {
   AuthResult,
   Credentials,
+  Dashboard,
   Destination,
   DestinationInput,
   ListParams,
@@ -109,6 +110,10 @@ function makeResource<T, I>(path: string): Resource<T, I> {
 export const destinationsApi = makeResource<Destination, DestinationInput>('/api/destinations');
 export const passengersApi = makeResource<Passenger, PassengerInput>('/api/passengers');
 export const tripsApi = makeResource<Trip, TripInput>('/api/trips');
+
+export const dashboardApi = {
+  summary: () => request<Dashboard>('/api/dashboard'),
+};
 
 export const authApi = {
   login: (credentials: Credentials) =>

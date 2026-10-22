@@ -39,6 +39,9 @@ The images below use sample data.
 - The passenger birth date uses the same calendar, with month and year selects for dates far in the past; only days before today can be chosen
 - Destination countries are chosen from a searchable list (English or Portuguese names) and shown with their flag, in the destinations table and on every boarding pass
 - Navigation icons for Trips, Passengers and Destinations, and a plane on the boarding pass route line
+- Dashboard as the first screen: trips per status, money booked per currency (currencies are never added together), the next departures and the most visited destinations, all computed by the database with group-by queries (`GET /api/dashboard`)
+- Sorting trips by price groups them by currency first, since 100 EUR and 100 BRL are not the same amount
+- Export every trip as a CSV file (opens in Excel with accents intact; text that looks like a spreadsheet formula is neutralised)
 - A "Sample data" button adds example destinations, passengers and trips to the signed-in account; running it again adds nothing
 - Light and dark themes: follows the operating system by default, with a toggle that remembers the choice
 - Automated tests on both sides (back-end: unit, web layer, repository and end-to-end; front-end: components and API client) running on every push through GitHub Actions
@@ -229,6 +232,7 @@ It lists every endpoint with its request and response formats and lets you try t
 | Passengers   | `/api/passengers`  | GET (page), GET by id, POST, PUT, DELETE |
 | Destinations | `/api/destinations`| GET (page), GET by id, POST, PUT, DELETE |
 | Trips        | `/api/trips`       | GET (page), GET by id, POST, PUT, DELETE |
+| Dashboard    | `/api/dashboard`   | GET (summary of the signed-in account)   |
 | Auth         | `/api/auth`        | POST `/register`, POST `/login`, GET `/me` (public except `/me`) |
 
 Additional queries:
@@ -353,7 +357,7 @@ cd frontend
 npm test
 ```
 
-Vitest and Testing Library (78 tests) cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse, keyboard, max date, month and year jump), the country list and flags, the sample data loader, the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
+Vitest and Testing Library (84 tests) cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse, keyboard, max date, month and year jump), the country list and flags, the sample data loader, the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
 
 GitHub Actions runs both suites, and builds the front-end, on every push and pull request (`.github/workflows/ci.yml`).
 

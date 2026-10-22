@@ -86,7 +86,11 @@ describe('authentication flow', () => {
   });
 
   it('creates an account and signs the user in right away', async () => {
-    stubApi((_method, url) => (url.endsWith('/api/auth/register') ? respond(201, authResult) : respond(200, emptyPage)));
+    stubApi((_method, url) => {
+      if (url.endsWith('/api/auth/register')) return respond(201, authResult);
+      if (url.endsWith('/api/dashboard')) return respond(200, { statusCounts: [], totals: [], upcoming: [], topDestinations: [] });
+      return respond(200, emptyPage);
+    });
     const user = userEvent.setup();
     renderApp('/register');
 
@@ -95,7 +99,7 @@ describe('authentication flow', () => {
     await user.type(screen.getByLabelText('Password'), 'a-long-passphrase');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
-    expect(await screen.findByRole('heading', { name: 'Trips' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
     const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/auth/register'))!;
     expect(bodyOf(call)).toEqual({ name: 'Ana Souza', email: 'ana@email.com', password: 'a-long-passphrase' });
     expect(getToken()).toBe('signed.jwt.token');

@@ -11,7 +11,9 @@ import com.tt.tripbook.model.TripStatus;
 import com.tt.tripbook.repository.TripRepository;
 import com.tt.tripbook.security.CurrentUser;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,10 +47,22 @@ public class TripService {
     public PageResponse<TripResponse> findAll(String status, Pageable pageable) {
         // Only the trips of the signed-in account's passengers
         Long ownerId = currentUser.id();
+        pageable = pricesPerCurrency(pageable);
         Page<Trip> page = (status == null || status.isBlank())
                 ? repository.findByPassengerOwnerId(ownerId, pageable)
                 : repository.findByPassengerOwnerIdAndStatus(ownerId, normalizeStatus(status), pageable);
         return PageResponse.from(page.map(TripResponse::from));
+    }
+
+    // 100 EUR and 100 BRL are not the same amount, so a sort by price groups the trips by currency first
+    // and orders the prices inside each group
+    private Pageable pricesPerCurrency(Pageable pageable) {
+        Sort sort = pageable.getSort();
+        if (pageable.isUnpaged() || sort.getOrderFor("price") == null || sort.getOrderFor("currency") != null) {
+            return pageable;
+        }
+        Sort grouped = Sort.by("currency").ascending().and(sort);
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), grouped);
     }
 
     @Transactional(readOnly = true)

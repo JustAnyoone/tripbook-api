@@ -3,10 +3,11 @@ import { destinationsApi, messageOf, passengersApi, tripsApi } from '../api/clie
 import { CURRENCIES, TRIP_STATUSES, type Currency, type Destination, type Passenger, type Trip, type TripInput, type TripStatus } from '../api/types';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Field, FormShell } from '../components/FormShell';
-import { PlaneIcon } from '../components/icons';
+import { DownloadIcon, PlaneIcon } from '../components/icons';
 import { CountryLabel } from '../components/Flag';
 import { DatePicker } from '../components/DatePicker';
 import { ListPage, type FormProps, type SortOption } from '../components/ListPage';
+import { downloadFile, tripsToCsv } from '../lib/csv';
 import { formatDate, formatNights, formatPrice, nightsBetween, todayIso, validateTripDates } from '../lib/dates';
 
 const CURRENCY_LABELS: Record<Currency, string> = {
@@ -77,8 +78,9 @@ function BoardingPass({ trip, actions }: { trip: Trip; actions: ReactNode }) {
 const SORT_OPTIONS: SortOption[] = [
   { value: 'departureDate,desc', label: 'Departure, latest first' },
   { value: 'departureDate,asc', label: 'Departure, earliest first' },
-  { value: 'price,desc', label: 'Price, highest first' },
-  { value: 'price,asc', label: 'Price, lowest first' },
+  // The API groups prices by currency first: 100 EUR and 100 BRL are not the same amount
+  { value: 'price,desc', label: 'Price, highest first (per currency)' },
+  { value: 'price,asc', label: 'Price, lowest first (per currency)' },
 ];
 
 // The selects offer the first 100 passengers and destinations, by name
@@ -233,6 +235,39 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
   );
 }
 
+// Downloads every trip of the account as a spreadsheet-friendly CSV file
+function ExportButton() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function exportTrips() {
+    setBusy(true);
+    setError(null);
+    try {
+      const page = await tripsApi.list({ page: 0, size: 2000, sort: 'departureDate,asc' });
+      downloadFile(`tripbook-trips-${todayIso()}.csv`, tripsToCsv(page.content), 'text/csv;charset=utf-8');
+    } catch (failure) {
+      setError(messageOf(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="button button-outline button-with-icon" onClick={exportTrips} disabled={busy}>
+        <DownloadIcon />
+        Export CSV
+      </button>
+      {error && (
+        <span className="muted" role="alert">
+          {error}
+        </span>
+      )}
+    </>
+  );
+}
+
 export function TripsPage() {
   return (
     <ListPage<Trip, TripInput>
@@ -247,6 +282,7 @@ export function TripsPage() {
       }}
       renderCard={(trip, actions) => <BoardingPass trip={trip} actions={actions} />}
       sortOptions={SORT_OPTIONS}
+      headerActions={<ExportButton />}
       renderForm={(props) => <TripForm {...props} />}
       describe={(t) => `the trip of ${t.passenger.name} to ${t.destination.city}`}
       emptyHint="Book the first one once you have a passenger and a destination."

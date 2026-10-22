@@ -97,3 +97,11 @@ export interface Credentials {
 export interface Registration extends Credentials {
   name: string;
 }
+
+export interface Dashboard {
+  statusCounts: { status: TripStatus; trips: number }[];
+  /** One entry per currency: amounts in different currencies are never added together */
+  totals: { currency: Currency; trips: number; total: number }[];
+  upcoming: Trip[];
+  topDestinations: { city: string; country: string; trips: number }[];
+}
