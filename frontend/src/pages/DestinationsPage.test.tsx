@@ -42,6 +42,14 @@ describe('DestinationsPage', () => {
     expect(screen.getByText('1 destination')).toBeInTheDocument();
   });
 
+  it('shows placeholder rows while the first page loads', () => {
+    stubApi(() => new Promise<Response>(() => {})); // never answers
+    const { container } = render(<DestinationsPage />);
+
+    expect(container.querySelectorAll('.skeleton-row')).toHaveLength(5);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading destinations');
+  });
+
   it('invites the user to add the first destination when there are none', async () => {
     stubApi(() => respond(200, page([])));
     render(<DestinationsPage />);
