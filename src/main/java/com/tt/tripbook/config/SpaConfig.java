@@ -12,7 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class SpaConfig implements WebMvcConfigurer {
 
     // Keep in sync with the routes in frontend/src/App.tsx and the permit rules in SecurityConfig
-    public static final String[] CLIENT_ROUTES = {"/login", "/register", "/trips", "/passengers", "/destinations"};
+    public static final String[] CLIENT_ROUTES = {"/login", "/register", "/dashboard", "/trips", "/passengers", "/destinations"};
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {

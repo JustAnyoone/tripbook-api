@@ -22,7 +22,7 @@ export function AuthPage({ mode }: AuthPageProps) {
   const [error, setError] = useState<string | null>(null);
 
   const isRegister = mode === 'register';
-  const destination = (location.state as { from?: string } | null)?.from ?? '/trips';
+  const destination = (location.state as { from?: string } | null)?.from ?? '/dashboard';
 
   if (status === 'signed-in') return <Navigate to={destination} replace />;
 

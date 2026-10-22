@@ -2,11 +2,17 @@ package com.tt.tripbook.repository;
 
 import com.tt.tripbook.model.Trip;
 import com.tt.tripbook.model.TripStatus;
+import com.tt.tripbook.model.Currency;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TripRepository extends JpaRepository<Trip, Long> {
 
@@ -36,4 +42,36 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     Optional<Trip> findByIdAndPassengerOwnerId(Long id, Long ownerId);
 
     boolean existsByDestinationId(Long destinationId);
+
+    // Dashboard queries. Each one is scoped to the account through Trip.passenger.owner.id.
+
+    record StatusRow(TripStatus status, Long trips) {
+    }
+
+    record CurrencyRow(Currency currency, Long trips, BigDecimal total) {
+    }
+
+    record DestinationRow(String city, String country, Long trips) {
+    }
+
+    @Query("select new com.tt.tripbook.repository.TripRepository$StatusRow(t.status, count(t)) "
+            + "from Trip t where t.passenger.owner.id = :ownerId group by t.status")
+    List<StatusRow> countByStatus(@Param("ownerId") Long ownerId);
+
+    @Query("select new com.tt.tripbook.repository.TripRepository$CurrencyRow(t.currency, count(t), sum(t.price)) "
+            + "from Trip t where t.passenger.owner.id = :ownerId and t.status <> :excluded "
+            + "group by t.currency order by t.currency")
+    List<CurrencyRow> totalsByCurrency(@Param("ownerId") Long ownerId, @Param("excluded") TripStatus excluded);
+
+    @EntityGraph(attributePaths = {"passenger", "destination"})
+    @Query("select t from Trip t where t.passenger.owner.id = :ownerId and t.status <> :excluded "
+            + "and t.departureDate >= :from")
+    List<Trip> findUpcoming(@Param("ownerId") Long ownerId, @Param("excluded") TripStatus excluded,
+                            @Param("from") LocalDate from, Pageable pageable);
+
+    @Query("select new com.tt.tripbook.repository.TripRepository$DestinationRow(d.city, d.country, count(t)) "
+            + "from Trip t join t.destination d where t.passenger.owner.id = :ownerId and t.status <> :excluded "
+            + "group by d.id, d.city, d.country order by count(t) desc, d.city")
+    List<DestinationRow> topDestinations(@Param("ownerId") Long ownerId, @Param("excluded") TripStatus excluded,
+                                         Pageable pageable);
 }

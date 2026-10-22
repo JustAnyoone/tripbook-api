@@ -20,7 +20,7 @@ describe('Layout', () => {
       </ThemeProvider>,
     );
     const links = container.querySelectorAll('.nav a');
-    expect(links).toHaveLength(3);
+    expect(links).toHaveLength(4);
     links.forEach((link) => expect(link.querySelector('svg.icon')).not.toBeNull());
   });
 

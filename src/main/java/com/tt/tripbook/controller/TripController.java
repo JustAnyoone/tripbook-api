@@ -29,7 +29,8 @@ public class TripController {
 
     @Operation(summary = "List trips, paginated",
             description = "Optional filter by status (PENDING, CONFIRMED or CANCELLED, case-insensitive). "
-                    + "Newest departure first by default; use page, size and sort to change it.")
+                    + "Newest departure first by default; use page, size and sort to change it. "
+                    + "Sorting by price groups the trips by currency first, because amounts in different currencies cannot be compared.")
     @ApiResponse(responseCode = "400", description = "Unknown status, invalid sort property or parameter value")
     @GetMapping
     public PageResponse<TripResponse> findAll(

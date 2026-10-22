@@ -56,6 +56,8 @@ interface ListPageProps<T extends { id: number }, I> {
   /** Extra sentence for the delete confirmation, for example what else gets removed */
   deleteNote?: string;
   emptyHint: string;
+  /** Extra buttons next to the Add button, for example an export */
+  headerActions?: ReactNode;
 }
 
 interface Sort {
@@ -77,6 +79,7 @@ export function ListPage<T extends { id: number }, I>({
   describe,
   deleteNote,
   emptyHint,
+  headerActions,
 }: ListPageProps<T, I>) {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
@@ -162,9 +165,12 @@ export function ListPage<T extends { id: number }, I>({
             {data ? `${total} ${total === 1 ? noun : nounPlural}${hasFilter ? ' found' : ''}` : ' '}
           </p>
         </div>
-        <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
-          Add {noun}
-        </button>
+        <div className="page-actions">
+          {headerActions}
+          <button type="button" className="button button-primary" onClick={() => setEditing('new')}>
+            Add {noun}
+          </button>
+        </div>
       </header>
 
       <div className="toolbar">

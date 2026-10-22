@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { DestinationsIcon, PassengersIcon, TripsIcon } from './icons';
+import { DashboardIcon, DestinationsIcon, PassengersIcon, TripsIcon } from './icons';
 import { RefreshProvider } from './RefreshContext';
 import { SampleDataButton } from './SampleDataButton';
 import { Mark } from './Mark';
@@ -18,6 +18,12 @@ export function Layout() {
         </div>
         <nav aria-label="Main" className="topnav">
           <ul className="nav">
+            <li>
+              <NavLink to="/dashboard">
+                <DashboardIcon />
+                Dashboard
+              </NavLink>
+            </li>
             <li>
               <NavLink to="/trips">
                 <TripsIcon />
