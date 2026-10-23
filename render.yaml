@@ -7,6 +7,9 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile.render
     plan: free
+    # The college assignment stays frozen on main; the live site follows portfolio and redeploys on every merge
+    branch: portfolio
+    autoDeploy: true
     healthCheckPath: /login
     envVars:
       - key: SERVER_PORT
