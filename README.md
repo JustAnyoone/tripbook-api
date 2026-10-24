@@ -7,7 +7,9 @@
 
 Full-stack app for managing trip bookings: passengers, destinations and the trips that connect them. A Spring Boot REST API with MySQL, and a React front-end where every trip is shown as a boarding pass.
 
-The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and was evolved into a portfolio project: DTOs, pagination, automated tests, continuous integration, JWT authentication, per-account data, a React front-end with light and dark themes, and Docker are in place; publishing it online is next.
+**Live demo:** https://tripbook-api-9dv5.onrender.com
+
+The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and was evolved into a portfolio project: DTOs, pagination, automated tests, continuous integration, JWT authentication, per-account data, a React front-end with light and dark themes, and deployed online with Docker on Render + Aiven MySQL.
 
 ## Screenshots
 
