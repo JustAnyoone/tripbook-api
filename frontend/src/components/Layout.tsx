@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { t, useLang } from '../i18n';
 import { LanguageToggle } from './LanguageToggle';
-import { DashboardIcon, DestinationsIcon, PassengersIcon, TripsIcon } from './icons';
+import { DashboardIcon, DestinationsIcon, MapIcon, PassengersIcon, TripsIcon } from './icons';
 import { RefreshProvider } from './RefreshContext';
 import { SampleDataButton } from './SampleDataButton';
 import { Mark } from './Mark';
@@ -43,6 +43,12 @@ export function Layout() {
               <NavLink to="/destinations">
                 <DestinationsIcon />
                 {t('nav.destinations')}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/map">
+                <MapIcon />
+                {t('nav.map')}
               </NavLink>
             </li>
           </ul>

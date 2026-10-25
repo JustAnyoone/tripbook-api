@@ -1,6 +1,7 @@
 package com.tt.tripbook.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 
 // A person who can sign in to the API. Not related to Passenger: a passenger is a travel record,
 // a user is an account.
@@ -21,6 +22,12 @@ public class AppUser {
     // BCrypt hash, never the raw password
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
+
+    // Default USER; ADMIN can manage shared resources (destinations)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    @ColumnDefault("'USER'")
+    private Role role = Role.USER;
 
     public Long getId() {
         return id;
@@ -52,5 +59,13 @@ public class AppUser {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 }

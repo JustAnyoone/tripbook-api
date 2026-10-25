@@ -4,6 +4,7 @@ import com.tt.tripbook.dto.PageResponse;
 import com.tt.tripbook.dto.PassengerRequest;
 import com.tt.tripbook.dto.PassengerResponse;
 import com.tt.tripbook.service.PassengerService;
+import com.tt.tripbook.service.PhotoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +15,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/passengers")
@@ -21,9 +24,11 @@ import org.springframework.web.bind.annotation.*;
 public class PassengerController {
 
     private final PassengerService service;
+    private final PhotoService photoService;
 
-    public PassengerController(PassengerService service) {
+    public PassengerController(PassengerService service, PhotoService photoService) {
         this.service = service;
+        this.photoService = photoService;
     }
 
     @Operation(summary = "List passengers, paginated",
@@ -70,6 +75,28 @@ public class PassengerController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Upload or replace a passenger's profile photo",
+            description = "Accepts JPEG, PNG or WebP, max 5 MB. Returns the Cloudinary URL.")
+    @ApiResponse(responseCode = "200", description = "Photo uploaded")
+    @ApiResponse(responseCode = "400", description = "Invalid file (not an image, too large or empty)")
+    @ApiResponse(responseCode = "404", description = "Passenger not found")
+    @PostMapping(value = "/{id}/photo", consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, String>> uploadPhoto(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        String url = photoService.uploadPhoto(id, file);
+        return ResponseEntity.ok(Map.of("photoUrl", url));
+    }
+
+    @Operation(summary = "Delete a passenger's profile photo")
+    @ApiResponse(responseCode = "204", description = "Photo deleted")
+    @ApiResponse(responseCode = "404", description = "Passenger not found or no photo")
+    @DeleteMapping("/{id}/photo")
+    public ResponseEntity<Void> deletePhoto(@PathVariable Long id) {
+        photoService.deletePhoto(id);
         return ResponseEntity.noContent().build();
     }
 }

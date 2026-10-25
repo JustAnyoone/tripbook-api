@@ -14,6 +14,7 @@ import type {
   Registration,
   Trip,
   TripInput,
+  TripShare,
   User,
 } from './types';
 
@@ -115,6 +116,35 @@ export const tripsApi = makeResource<Trip, TripInput>('/api/trips');
 
 export const dashboardApi = {
   summary: () => request<Dashboard>('/api/dashboard'),
+};
+
+export const photoApi = {
+  upload: (passengerId: number, file: File): Promise<{ photoUrl: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    const token = getToken();
+    return fetch(`${BASE_URL}/api/passengers/${passengerId}/photo`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      if (!res.ok) throw new ApiError(res.status, `Upload failed (${res.status})`);
+      return res.json() as Promise<{ photoUrl: string }>;
+    });
+  },
+  remove: (passengerId: number) =>
+    request<void>(`/api/passengers/${passengerId}/photo`, { method: 'DELETE' }),
+};
+
+export const tripShareApi = {
+  share: (tripId: number, guestEmail: string) =>
+    request<TripShare>(`/api/trips/${tripId}/shares?guestEmail=${encodeURIComponent(guestEmail)}`, { method: 'POST' }),
+  unshare: (tripId: number, guestId: number) =>
+    request<void>(`/api/trips/${tripId}/shares/${guestId}`, { method: 'DELETE' }),
+  listForTrip: (tripId: number) =>
+    request<TripShare[]>(`/api/trips/${tripId}/shares`),
+  sharedWithMe: () =>
+    request<Trip[]>('/api/trips/shared-with-me'),
 };
 
 export const authApi = {

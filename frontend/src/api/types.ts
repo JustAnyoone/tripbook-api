@@ -19,6 +19,15 @@ export interface Passenger {
   documentNumber: string;
   email: string;
   birthDate: string | null;
+  photoUrl: string | null;
+}
+
+export interface TripShare {
+  id: number;
+  tripId: number;
+  owner: User;
+  guest: User;
+  sharedAt: string;
 }
 
 export interface PassengerInput {

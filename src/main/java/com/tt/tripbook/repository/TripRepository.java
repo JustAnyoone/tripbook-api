@@ -74,4 +74,10 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
             + "group by d.id, d.city, d.country order by count(t) desc, d.city")
     List<DestinationRow> topDestinations(@Param("ownerId") Long ownerId, @Param("excluded") TripStatus excluded,
                                          Pageable pageable);
+
+    // Notification query: find CONFIRMED trips departing on a specific date, with passenger and destination loaded.
+    @EntityGraph(attributePaths = {"passenger", "destination"})
+    @Query("select t from Trip t where t.status = com.tt.tripbook.model.TripStatus.CONFIRMED "
+            + "and t.departureDate = :date")
+    List<Trip> findByStatusAndDepartureDateWithPassengerAndDestination(@Param("date") LocalDate date);
 }
