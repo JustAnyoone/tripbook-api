@@ -17,6 +17,7 @@ function stubApi(trips: unknown[] = []) {
   fetchMock = vi.fn((url: string, init?: RequestInit) => {
     const path = String(url);
     let body: unknown = page(trips);
+    if (path.includes('/shared-with-me')) body = [];
     if (path.includes('/api/passengers')) body = page([ana]);
     else if (path.includes('/api/destinations')) body = page([lisbon]);
     else if (init?.method === 'POST') body = { id: 9 };
