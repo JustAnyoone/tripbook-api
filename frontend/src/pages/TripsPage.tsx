@@ -407,7 +407,7 @@ function SharedWithMeSection() {
   }, []);
 
   if (error) return <ErrorBanner message={error} />;
-  if (!trips || trips.length === 0) return null;
+  if (!Array.isArray(trips) || trips.length === 0) return null;
 
   return (
     <section style={{ marginTop: '2.5rem' }}>

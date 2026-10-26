@@ -11,6 +11,7 @@ import com.tt.tripbook.dto.AuthResponse;
 import com.tt.tripbook.dto.LoginRequest;
 import com.tt.tripbook.dto.RegisterRequest;
 import com.tt.tripbook.dto.UserResponse;
+import com.tt.tripbook.model.Role;
 import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.InvalidCredentialsException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
@@ -50,7 +51,7 @@ class AuthServiceTest {
             saved.setId(7L);
             return saved;
         });
-        when(jwtService.generateToken("ana@email.com")).thenReturn("the-token");
+        when(jwtService.generateToken("ana@email.com", "USER")).thenReturn("the-token");
         when(jwtService.expiresInSeconds()).thenReturn(3600L);
 
         AuthResponse response = service.register(
@@ -64,7 +65,7 @@ class AuthServiceTest {
         assertThat(response.token()).isEqualTo("the-token");
         assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.expiresIn()).isEqualTo(3600L);
-        assertThat(response.user()).isEqualTo(new UserResponse(7L, "Ana Souza", "ana@email.com"));
+        assertThat(response.user()).isEqualTo(new UserResponse(7L, "Ana Souza", "ana@email.com", Role.USER));
     }
 
     @Test
@@ -83,7 +84,7 @@ class AuthServiceTest {
         AppUser user = user(3L, "ana@email.com", "HASH");
         when(repository.findByEmail("ana@email.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("a-long-passphrase", "HASH")).thenReturn(true);
-        when(jwtService.generateToken("ana@email.com")).thenReturn("the-token");
+        when(jwtService.generateToken("ana@email.com", "USER")).thenReturn("the-token");
         when(jwtService.expiresInSeconds()).thenReturn(3600L);
 
         AuthResponse response = service.login(new LoginRequest(" ANA@email.com", "a-long-passphrase"));
@@ -100,7 +101,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> service.login(new LoginRequest("ana@email.com", "wrong")))
                 .isInstanceOf(InvalidCredentialsException.class);
 
-        verify(jwtService, never()).generateToken(any());
+        verify(jwtService, never()).generateToken(any(), any());
     }
 
     @Test
@@ -120,7 +121,7 @@ class AuthServiceTest {
 
         UserResponse response = service.currentUser("ana@email.com");
 
-        assertThat(response).isEqualTo(new UserResponse(3L, "Ana Souza", "ana@email.com"));
+        assertThat(response).isEqualTo(new UserResponse(3L, "Ana Souza", "ana@email.com", Role.USER));
     }
 
     @Test

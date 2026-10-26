@@ -11,6 +11,7 @@ import com.tt.tripbook.dto.AuthResponse;
 import com.tt.tripbook.dto.LoginRequest;
 import com.tt.tripbook.dto.RegisterRequest;
 import com.tt.tripbook.dto.UserResponse;
+import com.tt.tripbook.model.Role;
 import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.GlobalExceptionHandler;
 import com.tt.tripbook.exception.InvalidCredentialsException;
@@ -46,7 +47,7 @@ class AuthControllerTest {
     }
 
     private static AuthResponse authResponse() {
-        return new AuthResponse("the-token", "Bearer", 3600, new UserResponse(1L, "Ana Souza", "ana@email.com"));
+        return new AuthResponse("the-token", "Bearer", 3600, new UserResponse(1L, "Ana Souza", "ana@email.com", Role.USER));
     }
 
     @Test

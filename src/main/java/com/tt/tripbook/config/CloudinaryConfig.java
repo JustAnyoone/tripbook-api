@@ -11,9 +11,9 @@ public class CloudinaryConfig {
 
     @Bean
     Cloudinary cloudinary(
-            @Value("${CLOUDINARY_CLOUD_NAME}") String cloudName,
-            @Value("${CLOUDINARY_API_KEY}") String apiKey,
-            @Value("${CLOUDINARY_API_SECRET}") String apiSecret) {
+            @Value("${CLOUDINARY_CLOUD_NAME:}") String cloudName,
+            @Value("${CLOUDINARY_API_KEY:}") String apiKey,
+            @Value("${CLOUDINARY_API_SECRET:}") String apiSecret) {
         return new Cloudinary(Map.of(
                 "cloud_name", cloudName,
                 "api_key", apiKey,

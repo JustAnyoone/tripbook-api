@@ -279,7 +279,7 @@ class TripControllerTest {
                 new BigDecimal("3500.50"),
                 "BRL",
                 "CONFIRMED",
-                new PassengerResponse(1L, "Ana Souza", "AB123456", "ana@email.com", LocalDate.of(1998, 5, 20)),
+                new PassengerResponse(1L, "Ana Souza", "AB123456", "ana@email.com", LocalDate.of(1998, 5, 20), null),
                 new DestinationResponse(1L, "Lisbon", "Portugal", "Portuguese capital"));
     }
 }

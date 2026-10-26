@@ -83,7 +83,10 @@ class TripApiIntegrationTest {
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();
         userRepository.deleteAll();
-        owner = userRepository.save(user("owner@email.com"));
+        // Admin, so the same account can also create and delete destinations
+        AppUser admin = user("owner@email.com");
+        admin.setRole(com.tt.tripbook.model.Role.ADMIN);
+        owner = userRepository.save(admin);
         TestAuth.signIn(owner);
     }
 

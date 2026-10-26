@@ -193,6 +193,6 @@ class PassengerControllerTest {
     }
 
     private PassengerResponse response() {
-        return new PassengerResponse(1L, "Ana Souza", "AB123456", "ana@email.com", LocalDate.of(1998, 5, 20));
+        return new PassengerResponse(1L, "Ana Souza", "AB123456", "ana@email.com", LocalDate.of(1998, 5, 20), null);
     }
 }
