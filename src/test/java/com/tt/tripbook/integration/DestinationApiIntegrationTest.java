@@ -1,14 +1,19 @@
 package com.tt.tripbook.integration;
 
 import static com.tt.tripbook.TestData.destination;
+import static com.tt.tripbook.TestData.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tt.tripbook.TestAuth;
+import com.tt.tripbook.model.AppUser;
+import com.tt.tripbook.model.Role;
 import com.tt.tripbook.repository.DestinationRepository;
 import com.tt.tripbook.repository.PassengerRepository;
 import com.tt.tripbook.repository.TripRepository;
+import com.tt.tripbook.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +41,9 @@ class DestinationApiIntegrationTest {
     @Autowired
     private DestinationRepository destinationRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -44,14 +52,21 @@ class DestinationApiIntegrationTest {
         tripRepository.deleteAll();
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();
+        userRepository.deleteAll();
+        // Creating destinations is an admin-only action
+        AppUser admin = user("admin@email.com");
+        admin.setRole(Role.ADMIN);
+        TestAuth.signIn(userRepository.save(admin));
     }
 
     // Leave the shared in-memory database empty for the test classes that run after this one
     @AfterEach
     void cleanUp() {
+        TestAuth.signOut();
         tripRepository.deleteAll();
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
