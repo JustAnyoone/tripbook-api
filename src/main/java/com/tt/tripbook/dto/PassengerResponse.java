@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 
 @Schema(description = "A registered passenger")
-public record PassengerResponse(Long id, String name, String documentNumber, String email, LocalDate birthDate) {
+public record PassengerResponse(Long id, String name, String documentNumber, String email, LocalDate birthDate, String photoUrl) {
 
     public static PassengerResponse from(Passenger passenger) {
         return new PassengerResponse(
@@ -14,6 +14,7 @@ public record PassengerResponse(Long id, String name, String documentNumber, Str
                 passenger.getName(),
                 passenger.getDocumentNumber(),
                 passenger.getEmail(),
-                passenger.getBirthDate());
+                passenger.getBirthDate(),
+                passenger.getPhotoUrl());
     }
 }

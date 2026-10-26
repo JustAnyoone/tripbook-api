@@ -28,6 +28,7 @@ export const en = {
   'nav.trips': 'Trips',
   'nav.passengers': 'Passengers',
   'nav.destinations': 'Destinations',
+  'nav.map': 'Map',
 
   // Sign in and sign up
   'auth.signIn': 'Sign in',
@@ -146,6 +147,28 @@ export const en = {
   'passengers.noMatch': 'No passengers match “{query}”.',
   'passengers.deleteTitle': 'Delete passenger',
   'passengers.deleteMessage': 'Delete {name}? Their trips are deleted too. This cannot be undone.',
+  'passengers.photo': 'Photo',
+  'passengers.uploadPhoto': 'Upload photo',
+  'passengers.deletePhoto': 'Delete photo',
+  'passengers.photoHint': 'JPEG, PNG or WebP, max 5 MB',
+  'passengers.uploading': 'Uploading…',
+
+  // Trip sharing
+  'trips.share': 'Share',
+  'trips.shareTitle': 'Share trip',
+  'trips.shareEmail': 'Guest email',
+  'trips.shareEmailPlaceholder': 'user@example.com',
+  'trips.shareButton': 'Share',
+  'trips.shareSuccess': 'Trip shared',
+  'trips.unshare': 'Remove',
+  'trips.sharedWith': 'Shared with',
+  'trips.sharedWithMe': 'Shared with me',
+  'trips.noShares': 'Not shared with anyone.',
+
+  // Map
+  'map.title': 'Destinations map',
+  'map.empty': 'No destinations yet. Add some to see them on the map.',
+  'map.loading': 'Loading map…',
 
   // Destinations
   'destinations.title': 'Destinations',

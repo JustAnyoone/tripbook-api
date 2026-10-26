@@ -31,6 +31,10 @@ public class Passenger {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
+    // Cloudinary URL for the passenger's profile photo. Null means no photo uploaded yet.
+    @Column(name = "photo_url")
+    private String photoUrl;
+
     // The account this passenger belongs to. Nullable in the schema only so that rows created before
     // accounts owned data can be adopted by LegacyDataMigration; the service always sets it.
     @ManyToOne
@@ -75,6 +79,12 @@ public class Passenger {
     }
     public void setOwner(AppUser owner) {
         this.owner = owner;
+    }
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
     }
     public List<Trip> getTrips() {
         return trips;

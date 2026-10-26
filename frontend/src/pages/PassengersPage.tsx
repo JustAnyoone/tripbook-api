@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { passengersApi } from '../api/client';
+import { useRef, useState } from 'react';
+import { passengersApi, photoApi } from '../api/client';
 import type { Passenger, PassengerInput } from '../api/types';
 import { t } from '../i18n';
 import { addDays, formatDate, todayIso } from '../lib/dates';
@@ -7,8 +7,25 @@ import { DatePicker } from '../components/DatePicker';
 import { Field, FormShell } from '../components/FormShell';
 import { ListPage, type Column, type FormProps } from '../components/ListPage';
 
+// Avatar shown in the name column
+function Avatar({ passenger }: { passenger: Passenger }) {
+  if (passenger.photoUrl) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+        <img
+          src={passenger.photoUrl}
+          alt={passenger.name}
+          style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+        />
+        <strong>{passenger.name}</strong>
+      </span>
+    );
+  }
+  return <strong>{passenger.name}</strong>;
+}
+
 const columns = (): Column<Passenger>[] => [
-  { key: 'name', header: t('passengers.name'), sortField: 'name', render: (p) => <strong>{p.name}</strong> },
+  { key: 'name', header: t('passengers.name'), sortField: 'name', render: (p) => <Avatar passenger={p} /> },
   { key: 'documentNumber', header: t('passengers.document'), sortField: 'documentNumber', render: (p) => <span className="tabular">{p.documentNumber}</span> },
   { key: 'email', header: t('passengers.email'), sortField: 'email', render: (p) => p.email },
   { key: 'birthDate', header: t('passengers.born'), render: (p) => <span className="tabular">{formatDate(p.birthDate)}</span> },
@@ -19,6 +36,35 @@ function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, Pas
   const [documentNumber, setDocumentNumber] = useState(initial?.documentNumber ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? '');
+  const [photoUrl, setPhotoUrl] = useState(initial?.photoUrl ?? null);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !initial) return;
+    setUploading(true);
+    setPhotoError(null);
+    try {
+      const result = await photoApi.upload(initial.id, file);
+      setPhotoUrl(result.photoUrl);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : t('error.generic'));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDeletePhoto() {
+    if (!initial) return;
+    try {
+      await photoApi.remove(initial.id);
+      setPhotoUrl(null);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : t('error.generic'));
+    }
+  }
 
   return (
     <FormShell
@@ -33,6 +79,43 @@ function PassengerForm({ initial, onSubmit, onCancel }: FormProps<Passenger, Pas
       }
       onCancel={onCancel}
     >
+      {/* Photo upload — only available when editing an existing passenger */}
+      {initial && (
+        <Field label={t('passengers.photo')} hint={t('passengers.photoHint')}>
+          {() => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {photoUrl && (
+                <img
+                  src={photoUrl}
+                  alt={name}
+                  style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }}
+                />
+              )}
+              <button
+                type="button"
+                className="button button-outline"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? t('passengers.uploading') : t('passengers.uploadPhoto')}
+              </button>
+              {photoUrl && (
+                <button type="button" className="button button-outline" onClick={handleDeletePhoto}>
+                  {t('passengers.deletePhoto')}
+                </button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handlePhotoChange}
+              />
+              {photoError && <span style={{ color: 'var(--color-error, red)', fontSize: '0.85em' }}>{photoError}</span>}
+            </div>
+          )}
+        </Field>
+      )}
       <Field label={t('passengers.name')}>
         {(id) => <input id={id} value={name} onChange={(e) => setName(e.target.value)} required />}
       </Field>

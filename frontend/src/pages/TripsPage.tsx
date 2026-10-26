@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { destinationsApi, messageOf, passengersApi, tripsApi } from '../api/client';
-import { CURRENCIES, TRIP_STATUSES, type Currency, type Destination, type Passenger, type Trip, type TripInput, type TripStatus } from '../api/types';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { destinationsApi, messageOf, passengersApi, tripsApi, tripShareApi } from '../api/client';
+import { CURRENCIES, TRIP_STATUSES, type Currency, type Destination, type Passenger, type Trip, type TripInput, type TripShare, type TripStatus } from '../api/types';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Field, FormShell } from '../components/FormShell';
 import { DownloadIcon, PlaneIcon } from '../components/icons';
@@ -226,6 +226,141 @@ function TripForm({ initial, onSubmit, onCancel }: FormProps<Trip, TripInput>) {
   );
 }
 
+// ---- Share modal ----
+
+interface ShareModalProps {
+  trip: Trip;
+  onClose: () => void;
+}
+
+function ShareModal({ trip, onClose }: ShareModalProps) {
+  const [shares, setShares] = useState<TripShare[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  // Load current shares when modal opens
+  useEffect(() => {
+    tripShareApi
+      .listForTrip(trip.id)
+      .then(setShares)
+      .catch((e: Error) => setLoadError(e.message));
+  }, [trip.id]);
+
+  async function handleShare(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSharing(true);
+    setShareError(null);
+    setSuccessMsg(null);
+    try {
+      const share = await tripShareApi.share(trip.id, email.trim());
+      setShares((prev) => (prev ? [...prev, share] : [share]));
+      setEmail('');
+      setSuccessMsg(t('trips.shareSuccess'));
+      emailRef.current?.focus();
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : t('error.generic'));
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function handleUnshare(guestId: number) {
+    try {
+      await tripShareApi.unshare(trip.id, guestId);
+      setShares((prev) => prev?.filter((s) => s.guest.id !== guestId) ?? null);
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : t('error.generic'));
+    }
+  }
+
+  return (
+    /* Backdrop */
+    <div
+      role="presentation"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.45)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: '1rem',
+      }}
+      onClick={onClose}
+    >
+      {/* Dialog — stop propagation so clicks inside don't close */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('trips.shareTitle')}
+        style={{
+          background: 'var(--color-surface, #fff)', borderRadius: '12px',
+          padding: '1.5rem', width: '100%', maxWidth: '440px',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem' }}>{t('trips.shareTitle')}</h2>
+        <p style={{ margin: '0 0 1rem', color: 'var(--color-muted, #666)', fontSize: '0.875rem' }}>
+          {trip.destination.city} — {trip.passenger.name}
+        </p>
+
+        {/* Share form */}
+        <form onSubmit={handleShare} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <input
+            ref={emailRef}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t('trips.shareEmailPlaceholder')}
+            aria-label={t('trips.shareEmail')}
+            required
+            style={{ flex: 1, minWidth: 0 }}
+          />
+          <button type="submit" className="button" disabled={sharing}>
+            {sharing ? '...' : t('trips.shareButton')}
+          </button>
+        </form>
+
+        {shareError && <p style={{ color: 'var(--color-error, red)', margin: '0 0 0.75rem', fontSize: '0.875rem' }}>{shareError}</p>}
+        {successMsg && <p style={{ color: 'var(--color-success, green)', margin: '0 0 0.75rem', fontSize: '0.875rem' }}>{successMsg}</p>}
+
+        {/* Current shares */}
+        <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '0.875rem' }}>{t('trips.sharedWith')}</p>
+        {loadError && <p style={{ color: 'var(--color-error, red)', fontSize: '0.875rem' }}>{loadError}</p>}
+        {shares === null && !loadError && <p style={{ color: 'var(--color-muted, #666)', fontSize: '0.875rem' }}>{t('common.loading')}…</p>}
+        {shares?.length === 0 && <p style={{ color: 'var(--color-muted, #666)', fontSize: '0.875rem' }}>{t('trips.noShares')}</p>}
+        {shares && shares.length > 0 && (
+          <ul style={{ margin: '0 0 1rem', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {shares.map((s) => (
+              <li key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {s.guest.name} <span style={{ color: 'var(--color-muted, #666)' }}>({s.guest.email})</span>
+                </span>
+                <button
+                  type="button"
+                  className="button button-outline"
+                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }}
+                  onClick={() => handleUnshare(s.guest.id)}
+                >
+                  {t('trips.unshare')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div style={{ textAlign: 'right' }}>
+          <button type="button" className="button button-outline" onClick={onClose}>
+            {t('common.close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Downloads every trip of the account as a spreadsheet-friendly CSV file
 function ExportButton() {
   const [busy, setBusy] = useState(false);
@@ -259,21 +394,70 @@ function ExportButton() {
   );
 }
 
-export function TripsPage() {
+// Section that shows trips shared with the current user by others
+function SharedWithMeSection() {
+  const [trips, setTrips] = useState<Trip[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    tripShareApi
+      .sharedWithMe()
+      .then(setTrips)
+      .catch((e: Error) => setError(e.message));
+  }, []);
+
+  if (error) return <ErrorBanner message={error} />;
+  if (!trips || trips.length === 0) return null;
+
   return (
-    <ListPage<Trip, TripInput>
-      resource="trips"
-      api={tripsApi}
-      filter={{
-        label: t('trips.statusField'),
-        param: 'status',
-        options: TRIP_STATUSES.map((value) => ({ value, label: t(`status.${value}`) })),
-      }}
-      renderCard={(trip, actions) => <BoardingPass trip={trip} actions={actions} />}
-      sortOptions={sortOptions()}
-      headerActions={<ExportButton />}
-      renderForm={(props) => <TripForm {...props} />}
-      deleteParams={(trip) => ({ passenger: trip.passenger.name, city: trip.destination.city })}
-    />
+    <section style={{ marginTop: '2.5rem' }}>
+      <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{t('trips.sharedWithMe')}</h2>
+      <div className="card-grid">
+        {trips.map((trip) => (
+          <BoardingPass key={trip.id} trip={trip} actions={null} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function TripsPage() {
+  const [shareTrip, setShareTrip] = useState<Trip | null>(null);
+
+  return (
+    <>
+      <ListPage<Trip, TripInput>
+        resource="trips"
+        api={tripsApi}
+        filter={{
+          label: t('trips.statusField'),
+          param: 'status',
+          options: TRIP_STATUSES.map((value) => ({ value, label: t(`status.${value}`) })),
+        }}
+        renderCard={(trip, actions) => (
+          <BoardingPass
+            trip={trip}
+            actions={
+              <>
+                {actions}
+                <button
+                  type="button"
+                  className="button button-outline"
+                  onClick={() => setShareTrip(trip)}
+                >
+                  {t('trips.share')}
+                </button>
+              </>
+            }
+          />
+        )}
+        sortOptions={sortOptions()}
+        headerActions={<ExportButton />}
+        renderForm={(props) => <TripForm {...props} />}
+        deleteParams={(trip) => ({ passenger: trip.passenger.name, city: trip.destination.city })}
+      />
+      <SharedWithMeSection />
+      {shareTrip && <ShareModal trip={shareTrip} onClose={() => setShareTrip(null)} />}
+    </>
   );
 }

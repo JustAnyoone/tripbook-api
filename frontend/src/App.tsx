@@ -10,6 +10,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ 
 const TripsPage = lazy(() => import('./pages/TripsPage').then((m) => ({ default: m.TripsPage })));
 const PassengersPage = lazy(() => import('./pages/PassengersPage').then((m) => ({ default: m.PassengersPage })));
 const DestinationsPage = lazy(() => import('./pages/DestinationsPage').then((m) => ({ default: m.DestinationsPage })));
+const MapPage = lazy(() => import('./pages/MapPage').then((m) => ({ default: m.MapPage })));
 
 export function App() {
   // Every text is read when it renders. Keying the routes on the language makes the whole screen render again
@@ -27,6 +28,7 @@ export function App() {
           <Route path="trips" element={<TripsPage />} />
           <Route path="passengers" element={<PassengersPage />} />
           <Route path="destinations" element={<DestinationsPage />} />
+          <Route path="map" element={<MapPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Route>

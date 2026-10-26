@@ -78,6 +78,16 @@ export function SparklesIcon() {
   );
 }
 
+// Globe / map icon
+export function MapIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18M3 12h18" />
+    </Icon>
+  );
+}
+
 // An airplane pointing right: the Material "flight" outline, turned a quarter
 export function PlaneIcon({ size = 20 }: { size?: number }) {
   return (

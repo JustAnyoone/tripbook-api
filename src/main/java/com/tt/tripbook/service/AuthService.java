@@ -8,6 +8,7 @@ import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.InvalidCredentialsException;
 import com.tt.tripbook.exception.ResourceNotFoundException;
 import com.tt.tripbook.model.AppUser;
+import com.tt.tripbook.model.Role;
 import com.tt.tripbook.repository.UserRepository;
 import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -57,9 +58,31 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
     }
 
+    @Transactional
+    public UserResponse changeRole(Long userId, Role role) {
+        AppUser user = repository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        user.setRole(role);
+        return UserResponse.from(repository.save(user));
+    }
+
+    @Transactional
+    public UserResponse promoteFirstAdmin(String email) {
+        if (repository.existsByRole(Role.ADMIN)) {
+            throw new ConflictException("An admin already exists. Ask them to grant you the ADMIN role.");
+        }
+        AppUser user = repository.findByEmail(normalize(email))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+        user.setRole(Role.ADMIN);
+        return UserResponse.from(repository.save(user));
+    }
+
     private AuthResponse tokenFor(AppUser user) {
-        return new AuthResponse(jwtService.generateToken(user.getEmail()), "Bearer",
-                jwtService.expiresInSeconds(), UserResponse.from(user));
+        return new AuthResponse(
+                jwtService.generateToken(user.getEmail(), user.getRole().name()),
+                "Bearer",
+                jwtService.expiresInSeconds(),
+                UserResponse.from(user));
     }
 
     private String normalize(String email) {

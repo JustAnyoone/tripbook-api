@@ -24,13 +24,15 @@ public class JwtService {
         this.lifetime = Duration.ofMinutes(expirationMinutes);
     }
 
-    public String generateToken(String subject) {
+    public String generateToken(String subject, String role) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(ISSUER)
                 .subject(subject)
                 .issuedAt(now)
                 .expiresAt(now.plus(lifetime))
+                // role is used by SecurityConfig to restrict admin-only endpoints
+                .claim("role", role)
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
