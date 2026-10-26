@@ -90,7 +90,7 @@ class SecurityIntegrationTest {
 
     @Test
     void protectedEndpoint_returns401_whenTheSignatureWasTamperedWith() throws Exception {
-        String token = jwtService.generateToken("ana@email.com");
+        String token = jwtService.generateToken("ana@email.com", "USER");
 
         mockMvc.perform(get("/api/destinations").header(HttpHeaders.AUTHORIZATION, "Bearer " + token + "x"))
                 .andExpect(status().isUnauthorized());
@@ -114,7 +114,7 @@ class SecurityIntegrationTest {
 
     @Test
     void protectedEndpoint_returns200_withAValidToken() throws Exception {
-        String token = jwtService.generateToken("ana@email.com");
+        String token = jwtService.generateToken("ana@email.com", "USER");
 
         mockMvc.perform(get("/api/destinations").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())

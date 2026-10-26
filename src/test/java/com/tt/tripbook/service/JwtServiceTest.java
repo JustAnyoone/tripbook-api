@@ -29,7 +29,7 @@ class JwtServiceTest {
     void generateToken_putsTheSubjectTheIssuerAndTheExpiryInTheToken() {
         Instant before = Instant.now();
 
-        Jwt jwt = decoder(SECRET).decode(service.generateToken("ana@email.com"));
+        Jwt jwt = decoder(SECRET).decode(service.generateToken("ana@email.com", "USER"));
 
         assertThat(jwt.getSubject()).isEqualTo("ana@email.com");
         assertThat(jwt.getClaimAsString("iss")).isEqualTo(JwtService.ISSUER);
@@ -45,7 +45,7 @@ class JwtServiceTest {
 
     @Test
     void aTokenSignedWithAnotherKey_isRejected() {
-        String token = service.generateToken("ana@email.com");
+        String token = service.generateToken("ana@email.com", "USER");
 
         assertThatThrownBy(() -> decoder("another-secret-with-at-least-32-bytes!!!!").decode(token))
                 .isInstanceOf(JwtException.class);
