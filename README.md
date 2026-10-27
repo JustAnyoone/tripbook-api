@@ -219,3 +219,4 @@ src/main/resources
 ## Autor
 
 Porttilho, estudante do CEUB.
+Ana Luiza Britto, estudante do CEUB.
