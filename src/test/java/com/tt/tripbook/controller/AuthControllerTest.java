@@ -11,7 +11,6 @@ import com.tt.tripbook.dto.AuthResponse;
 import com.tt.tripbook.dto.LoginRequest;
 import com.tt.tripbook.dto.RegisterRequest;
 import com.tt.tripbook.dto.UserResponse;
-import com.tt.tripbook.model.Role;
 import com.tt.tripbook.service.PhotoService;
 import com.tt.tripbook.exception.ConflictException;
 import com.tt.tripbook.exception.GlobalExceptionHandler;
@@ -51,7 +50,7 @@ class AuthControllerTest {
     }
 
     private static AuthResponse authResponse() {
-        return new AuthResponse("the-token", "Bearer", 3600, new UserResponse(1L, "Ana Souza", "ana@email.com", Role.USER, null));
+        return new AuthResponse("the-token", "Bearer", 3600, new UserResponse(1L, "Ana Souza", "ana@email.com", null));
     }
 
     @Test
