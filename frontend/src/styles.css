@@ -618,6 +618,7 @@ th[aria-sort='descending'] {
 
 .pass-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.15rem;
   margin: 0 -0.4rem;
@@ -1022,6 +1023,9 @@ th[aria-sort='descending'] {
   position: absolute;
   top: 1rem;
   right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .auth-card {
