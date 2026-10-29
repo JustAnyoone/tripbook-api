@@ -28,6 +28,11 @@ export const en = {
   'nav.trips': 'Trips',
   'nav.passengers': 'Passengers',
   'nav.destinations': 'Destinations',
+  'account.menu': 'Account picture',
+  'account.photo.upload': 'Upload picture',
+  'account.photo.change': 'Change picture',
+  'account.photo.remove': 'Remove picture',
+  'account.photo.uploading': 'Uploading…',
   'nav.map': 'Map',
 
   // Sign in and sign up

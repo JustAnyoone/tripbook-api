@@ -26,6 +26,11 @@ export const pt: Record<MessageKey, string> = {
   'nav.trips': 'Viagens',
   'nav.passengers': 'Passageiros',
   'nav.destinations': 'Destinos',
+  'account.menu': 'Foto da conta',
+  'account.photo.upload': 'Enviar foto',
+  'account.photo.change': 'Trocar foto',
+  'account.photo.remove': 'Remover foto',
+  'account.photo.uploading': 'Enviando…',
   'nav.map': 'Mapa',
 
   'auth.signIn': 'Entrar',

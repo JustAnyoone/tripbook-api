@@ -65,7 +65,7 @@ class AuthServiceTest {
         assertThat(response.token()).isEqualTo("the-token");
         assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.expiresIn()).isEqualTo(3600L);
-        assertThat(response.user()).isEqualTo(new UserResponse(7L, "Ana Souza", "ana@email.com", Role.USER));
+        assertThat(response.user()).isEqualTo(new UserResponse(7L, "Ana Souza", "ana@email.com", Role.USER, null));
     }
 
     @Test
@@ -121,7 +121,7 @@ class AuthServiceTest {
 
         UserResponse response = service.currentUser("ana@email.com");
 
-        assertThat(response).isEqualTo(new UserResponse(3L, "Ana Souza", "ana@email.com", Role.USER));
+        assertThat(response).isEqualTo(new UserResponse(3L, "Ana Souza", "ana@email.com", Role.USER, null));
     }
 
     @Test

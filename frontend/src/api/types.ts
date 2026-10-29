@@ -88,6 +88,8 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  /** Cloudinary URL of the account's profile picture; null or missing means none */
+  photoUrl?: string | null;
 }
 
 export interface AuthResult {
