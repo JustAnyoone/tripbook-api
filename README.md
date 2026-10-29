@@ -44,7 +44,7 @@ The same screen in Brazilian Portuguese:
 - Dates are picked from a calendar (never typed); days before today, and return days before the departure, cannot be chosen
 - The passenger birth date uses the same calendar, with month and year selects for dates far in the past; only days before today can be chosen
 - Destination countries are chosen from a searchable list (English or Portuguese names) and shown with their flag, in the destinations table and on every boarding pass
-- Navigation icons for Trips, Passengers and Destinations, and a plane on the boarding pass route line
+- Navigation icons for Trips, Passengers, Destinations and Map, and a plane on the boarding pass route line
 - Dashboard as the first screen: trips per status, money booked per currency (currencies are never added together), the next departures and the most visited destinations, all computed by the database with group-by queries (`GET /api/dashboard`)
 - Sorting trips by price groups them by currency first, since 100 EUR and 100 BRL are not the same amount
 - English and Brazilian Portuguese: a switch in the top bar (and on the sign-in page) changes every text, the dates, the calendar, the country names and the API's error messages. The choice is remembered; first visits follow the browser language. Texts live in `frontend/src/i18n` (`en.ts` is the reference and the compiler requires `pt.ts` to have the same keys)
@@ -53,6 +53,11 @@ The same screen in Brazilian Portuguese:
 - Export every trip as a CSV file (opens in Excel with accents intact; text that looks like a spreadsheet formula is neutralised)
 - A "Sample data" button adds example destinations, passengers and trips to the signed-in account; running it again adds nothing
 - Light and dark themes: follows the operating system by default, with a toggle that remembers the choice
+- **Trip sharing:** the owner of a trip can share it, by email, with another account. The guest sees it read-only under "Shared with me" and the owner can remove the share at any time
+- **Photos:** each passenger can have a photo, and each account has a profile picture (round avatar in the top bar, with initials when there is none). Images up to 5 MB are uploaded to Cloudinary and resized to a square
+- **Map:** an interactive world map (Leaflet and OpenStreetMap tiles, no API key) with a marker for every destination
+- **Departure reminders:** an endpoint that emails the passenger of every confirmed trip that departs in 3 days, meant to be called once a day by a cron service. It needs the optional email settings below
+- Destinations are a shared catalog: any signed-in account can create, edit and delete them (deleting is still refused while trips use the destination)
 - Automated tests on both sides (back-end: unit, web layer, repository and end-to-end; front-end: components and API client) running on every push through GitHub Actions
 
 ## Tech stack
@@ -62,7 +67,8 @@ The same screen in Brazilian Portuguese:
 - Hibernate / JPA, MySQL 8
 - springdoc-openapi (Swagger UI)
 - JUnit 5, Mockito, AssertJ, MockMvc, H2 (tests only)
-- React 19, TypeScript, Vite, React Router
+- Spring Mail (SMTP, SendGrid relay) and the Cloudinary SDK
+- React 19, TypeScript, Vite, React Router, Leaflet
 - Vitest and Testing Library
 - Maven, npm, Docker (multi-stage builds, docker compose), nginx, GitHub Actions
 
@@ -91,15 +97,17 @@ Client -> Controller -> Service -> Repository -> Hibernate/JPA -> MySQL
 
 | Entity        | Main attributes                                              | Relationships                                |
 |---------------|--------------------------------------------------------------|----------------------------------------------|
-| `Passenger`   | name, documentNumber (unique per account), email, birthDate  | Belongs to one account; has many trips       |
+| `Passenger`   | name, documentNumber (unique per account), email, birthDate, photoUrl | Belongs to one account; has many trips       |
 | `Destination` | city, country, description                                   | One destination is used by many trips        |
 | `Trip`        | departureDate, returnDate, price, currency, status           | Belongs to one passenger and one destination |
-| `AppUser`     | name, email (unique), passwordHash                           | Account used to sign in; owns passengers (and through them, trips) |
+| `AppUser`     | name, email (unique), passwordHash, photoUrl                 | Account used to sign in; owns passengers (and through them, trips) |
+| `TripShare`   | trip, owner, guest, sharedAt                                 | Gives one other account read-only access to one trip; a trip can be shared with a given account only once |
 
 Modeling notes:
 
 - `Trip` owns the foreign keys `passenger_id` and `destination_id` (`@ManyToOne` + `@JoinColumn`).
 - Each account sees only its own passengers and trips. Another account's record answers `404`, as if it did not exist. Destinations are a catalog shared by every account.
+- `photoUrl` (on `Passenger` and `AppUser`) holds the Cloudinary URL of the picture, or `null` when there is none. The image itself is not stored in the database.
 - A database created before accounts owned data is upgraded on start: existing passengers (and their trips) go to the first registered account (`LegacyDataMigration`).
 - Removing a passenger removes their trips (`cascade` and `orphanRemoval`), because a trip cannot exist without its passenger.
 - A destination with trips cannot be removed (HTTP 409). The foreign key enforces the same rule at the database level.
@@ -170,7 +178,7 @@ Send the returned `token` on each request as `Authorization: Bearer <token>`. In
 
 ### Authentication
 
-- `POST /api/auth/register` creates an account and signs it in (201), `POST /api/auth/login` returns a token (200, or 401 for a wrong email or password), `GET /api/auth/me` returns the signed-in user.
+- `POST /api/auth/register` creates an account and signs it in (201), `POST /api/auth/login` returns a token (200, or 401 for a wrong email or password), `GET /api/auth/me` returns the signed-in user. `POST /api/auth/me/photo` (multipart field `file`) sets the account's profile picture and `DELETE /api/auth/me/photo` removes it.
 - Tokens are signed with HS256 and last 60 minutes. Without a valid token the API answers `401` in the usual error format.
 - The signing key comes from the `JWT_SECRET` environment variable (at least 32 characters). A development default exists so the project runs out of the box; **always set your own `JWT_SECRET` anywhere the API is reachable by others.**
 - The front-end keeps the token in `localStorage` so a refresh does not sign the user out. The trade-off is that any script running on the page could read it, so the front-end never injects raw HTML. A common alternative is an HttpOnly cookie, which would also need CSRF protection.
@@ -191,6 +199,19 @@ spring.data.web.pageable.max-page-size=100
 # Origins allowed to call the API from a browser (default: the Vite dev server)
 app.cors.allowed-origins=http://localhost:5173
 ```
+
+### Optional integrations
+
+Photos and departure reminders use outside services. The application starts and works without them: until they are configured, uploading a photo fails with an error and no reminder is sent. Set these environment variables (never commit their values):
+
+| Variable | Used for |
+|----------|----------|
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Photo upload (passengers and account picture), from a free [Cloudinary](https://cloudinary.com) account |
+| `MAIL_PASSWORD` | A [SendGrid](https://sendgrid.com) API key, used as the SMTP password for `smtp.sendgrid.net` |
+| `MAIL_FROM` | The sender address, which must be verified in SendGrid (Single Sender Verification) |
+| `NOTIFY_TOKEN` | A long random secret that protects `POST /api/notify` |
+
+`POST /api/notify` has no login: instead it requires the header `X-Notify-Token` to match `NOTIFY_TOKEN`, and answers `401` otherwise. It sends one email to the passenger of every `CONFIRMED` trip that departs exactly 3 days from today and returns `{ "sent": <count> }`. To run it every day, create a daily job in a cron service such as [cron-job.org](https://cron-job.org) that sends `POST https://<your-app>/api/notify` with that header.
 
 ### Run the front-end
 
@@ -224,6 +245,9 @@ Render has no managed MySQL, so the database comes from elsewhere. [Aiven's free
    `JWT_SECRET` is generated by Render. Never commit any of these values.
 4. Deploy. The first request after 15 idle minutes takes about a minute, because free services spin down. A free uptime monitor (for example UptimeRobot) that requests the site URL every 5 minutes keeps it awake.
 5. Aiven shows the database port in its connection details; it is not 3306. Use the same port in `SPRING_DATASOURCE_URL`.
+6. Optional: add the variables from [Optional integrations](#optional-integrations) to enable photos and departure reminders.
+
+If you create the service by hand instead of from the Blueprint, set the branch and Auto-Deploy in the service's Settings, because `render.yaml` is not read in that case. If the Aiven database is switched off, the API cannot start or answer; power it back on and restart the service.
 
 CI builds this image and runs it against a real MySQL on every push.
 
@@ -243,7 +267,8 @@ It lists every endpoint with its request and response formats and lets you try t
 | Destinations | `/api/destinations`| GET (page), GET by id, POST, PUT, DELETE |
 | Trips        | `/api/trips`       | GET (page), GET by id, POST, PUT, DELETE |
 | Dashboard    | `/api/dashboard`   | GET (summary of the signed-in account)   |
-| Auth         | `/api/auth`        | POST `/register`, POST `/login`, GET `/me` (public except `/me`) |
+| Auth         | `/api/auth`        | POST `/register`, POST `/login`, GET `/me`, POST and DELETE `/me/photo` (register and login are public) |
+| Notifications | `/api/notify`     | POST, protected by the `X-Notify-Token` header instead of a login |
 
 Additional queries:
 
@@ -251,6 +276,12 @@ Additional queries:
 |--------------------------------------|--------------------------------------|
 | `GET /api/trips/passenger/{id}`      | Trips of one passenger (paginated)   |
 | `GET /api/trips/destination/{id}`    | Trips to one destination (paginated) |
+| `POST /api/trips/{id}/shares?guestEmail=` | Share your trip with another account |
+| `GET /api/trips/{id}/shares`         | Accounts a trip is shared with       |
+| `DELETE /api/trips/{id}/shares/{guestId}` | Stop sharing a trip             |
+| `GET /api/trips/shared-with-me`      | Trips other accounts shared with you |
+| `POST /api/passengers/{id}/photo`    | Upload or replace a passenger photo (multipart field `file`, images up to 5 MB) |
+| `DELETE /api/passengers/{id}/photo`  | Remove a passenger photo             |
 
 ### Pagination, sorting and filtering
 
@@ -337,10 +368,10 @@ Every error uses the same format:
 |--------|------------------------------------------------------------------------------------------|
 | 201    | Record created                                                                           |
 | 204    | Record deleted                                                                           |
-| 400    | Invalid data, impossible date, date in the past, unknown status or sort property, or return date before departure date |
+| 400    | Invalid data, impossible date, date in the past, unknown status or sort property, return date before departure date, an upload that is not an image or is over 5 MB, or sharing a trip that is not yours or with yourself |
 | 401    | Missing, invalid or expired token; wrong email or password on login                      |
 | 404    | Trip, passenger or destination not found                                                 |
-| 409    | Document number (per account), email or destination (city and country) already registered, or deleting a destination that still has trips |
+| 409    | Document number (per account), email or destination (city and country) already registered, trip already shared with that account, or deleting a destination that still has trips |
 
 ## Testing
 
@@ -367,7 +398,7 @@ cd frontend
 npm test
 ```
 
-Vitest and Testing Library (92 tests) cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse, keyboard, max date, month and year jump), the country list and flags, the sample data loader, the translations (every English text must have a Portuguese one) and the language switch, the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
+Vitest and Testing Library cover the API client (error mapping, query building, the Bearer header), the date and price helpers, the calendar date picker (mouse, keyboard, max date, month and year jump), the country list and flags, the sample data loader, the translations (every English text must have a Portuguese one) and the language switch, the light and dark theme, the trip form and boarding passes, the pagination component, the destinations page, the account avatar menu and the whole sign-in flow against a mocked `fetch`: redirect to login, sign in and sign up, wrong credentials, session restored after a refresh, token expiring mid-session, and sign out.
 
 GitHub Actions runs both suites, and builds the front-end, on every push and pull request (`.github/workflows/ci.yml`).
 
@@ -375,13 +406,17 @@ GitHub Actions runs both suites, and builds the front-end, on every push and pul
 
 ```
 src/main/java/com/tt/tripbook
-  controller/   DestinationController, PassengerController, TripController
+  controller/   DestinationController, PassengerController, TripController,
+                AuthController, TripShareController, NotificationController
   dto/          *Request, *Response records and PageResponse
-  service/      DestinationService, PassengerService, TripService
-  repository/   DestinationRepository, PassengerRepository, TripRepository
-  model/        Destination, Passenger, Trip, AppUser, TripStatus, Currency
+  service/      DestinationService, PassengerService, TripService, AuthService,
+                TripShareService, PhotoService, NotificationService
+  repository/   DestinationRepository, PassengerRepository, TripRepository,
+                UserRepository, TripShareRepository
+  model/        Destination, Passenger, Trip, AppUser, TripShare, TripStatus, Currency
   security/     SecurityConfig, CurrentUser, JsonAuthErrorHandler
-  config/       CorsConfig, ClockConfig, SpaConfig, LegacyDataMigration
+  config/       CorsConfig, ClockConfig, SpaConfig, LegacyDataMigration,
+                CloudinaryConfig, OpenApiConfig
   exception/    ApiError, ConflictException, ResourceNotFoundException,
                 BusinessRuleException, InvalidCredentialsException, GlobalExceptionHandler
 src/main/resources
@@ -390,10 +425,10 @@ src/test/java/com/tt/tripbook
   controller/ service/ repository/ integration/
 frontend/
   src/api/          typed API client
-  src/components/   ListPage, Dialog, DatePicker, Pagination, ThemeToggle, forms
+  src/components/   ListPage, Dialog, DatePicker, Pagination, ThemeToggle, AccountAvatar, forms
   src/auth/         AuthContext, RequireAuth, token storage
   src/theme/        light and dark theme (OS preference, saved choice)
-  src/pages/        TripsPage, PassengersPage, DestinationsPage, AuthPage
+  src/pages/        TripsPage, PassengersPage, DestinationsPage, MapPage, DashboardPage, AuthPage
 ```
 
 ## Roadmap
@@ -404,10 +439,12 @@ frontend/
 - [x] React front-end
 - [x] Authentication (Spring Security with JWT)
 - [x] Per-user data (each account sees only its own passengers and trips)
-- [ ] Roles (admin, for example)
 - [x] Docker setup (docker compose)
-- [ ] Deployment
+- [x] Deployment (Render and Aiven MySQL)
 - [x] `enum` for the trip status
+- [x] Trip sharing, photo upload, destination map and account picture
+- [x] Departure reminder endpoint (SendGrid)
+- [ ] Run the reminders daily in production (needs a verified sender and a cron job)
 
 ## License
 
