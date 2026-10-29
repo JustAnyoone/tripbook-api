@@ -51,7 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, SpaConfig.CLIENT_ROUTES).permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                        .jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(errors)
                         .accessDeniedHandler(errors))
                 .exceptionHandling(e -> e
