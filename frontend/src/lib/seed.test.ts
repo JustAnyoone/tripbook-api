@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { todayIso } from './dates';
 import { loadSampleData } from './seed';
 
 // A tiny in-memory API so the seed can be run twice
@@ -42,6 +43,14 @@ describe('loadSampleData', () => {
     expect(result).toEqual({ destinations: 6, passengers: 4, trips: 6 });
     expect(db.trips.every((trip) => trip.passenger && trip.destination)).toBe(true);
     expect(db.trips.some((trip) => trip.returnDate === null)).toBe(true);
+  });
+
+  it('never creates a trip departing in the past, which the API refuses', async () => {
+    const db = stubBackend();
+
+    await loadSampleData();
+
+    expect(db.trips.every((trip) => trip.departureDate >= todayIso())).toBe(true);
   });
 
   it('adds nothing the second time', async () => {
