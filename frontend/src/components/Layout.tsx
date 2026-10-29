@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { t, useLang } from '../i18n';
+import { AccountAvatar } from './AccountAvatar';
 import { LanguageToggle } from './LanguageToggle';
 import { DashboardIcon, DestinationsIcon, MapIcon, PassengersIcon, TripsIcon } from './icons';
 import { RefreshProvider } from './RefreshContext';
@@ -57,6 +58,7 @@ export function Layout() {
           <SampleDataButton />
           <LanguageToggle />
           <ThemeToggle />
+          <AccountAvatar />
           <span className="account-name" title={user?.email}>
             {user?.name}
           </span>

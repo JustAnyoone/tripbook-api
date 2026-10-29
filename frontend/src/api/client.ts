@@ -118,20 +118,35 @@ export const dashboardApi = {
   summary: () => request<Dashboard>('/api/dashboard'),
 };
 
+// Multipart upload of one image; the server answers with the Cloudinary URL
+function uploadImage(path: string, file: File): Promise<{ photoUrl: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  const token = getToken();
+  return fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  }).then(async (res) => {
+    if (!res.ok) {
+      let message = t('error.http', { status: res.status });
+      try {
+        const body: unknown = await res.json();
+        if (typeof body === 'object' && body !== null && 'message' in body) {
+          const apiMessage = (body as { message: unknown }).message;
+          if (typeof apiMessage === 'string' && apiMessage.length > 0) message = translateApiMessage(apiMessage, getLang());
+        }
+      } catch {
+        // Not JSON: keep the generic message
+      }
+      throw new ApiError(res.status, message);
+    }
+    return res.json() as Promise<{ photoUrl: string }>;
+  });
+}
+
 export const photoApi = {
-  upload: (passengerId: number, file: File): Promise<{ photoUrl: string }> => {
-    const form = new FormData();
-    form.append('file', file);
-    const token = getToken();
-    return fetch(`${BASE_URL}/api/passengers/${passengerId}/photo`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    }).then(async (res) => {
-      if (!res.ok) throw new ApiError(res.status, `Upload failed (${res.status})`);
-      return res.json() as Promise<{ photoUrl: string }>;
-    });
-  },
+  upload: (passengerId: number, file: File) => uploadImage(`/api/passengers/${passengerId}/photo`, file),
   remove: (passengerId: number) =>
     request<void>(`/api/passengers/${passengerId}/photo`, { method: 'DELETE' }),
 };
@@ -153,4 +168,6 @@ export const authApi = {
   register: (registration: Registration) =>
     request<AuthResult>('/api/auth/register', { method: 'POST', body: JSON.stringify(registration) }, { publicEndpoint: true }),
   me: () => request<User>('/api/auth/me'),
+  uploadPhoto: (file: File) => uploadImage('/api/auth/me/photo', file),
+  removePhoto: () => request<void>('/api/auth/me/photo', { method: 'DELETE' }),
 };

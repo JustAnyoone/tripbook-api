@@ -6,6 +6,7 @@ import com.tt.tripbook.dto.RegisterRequest;
 import com.tt.tripbook.dto.UserResponse;
 import com.tt.tripbook.model.Role;
 import com.tt.tripbook.service.AuthService;
+import com.tt.tripbook.service.PhotoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import java.util.Map;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -23,9 +26,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService service;
+    private final PhotoService photoService;
 
-    public AuthController(AuthService service) {
+    public AuthController(AuthService service, PhotoService photoService) {
         this.service = service;
+        this.photoService = photoService;
     }
 
     @Operation(summary = "Create an account", description = "Returns a token, so the user is signed in right away.")
@@ -71,5 +76,23 @@ public class AuthController {
     @PostMapping("/promote-first-admin")
     public UserResponse promoteFirstAdmin(@AuthenticationPrincipal Jwt jwt) {
         return service.promoteFirstAdmin(jwt.getSubject());
+    }
+
+    @Operation(summary = "Upload or replace your profile picture",
+            description = "Accepts JPEG, PNG or WebP, max 5 MB. Returns the Cloudinary URL.")
+    @ApiResponse(responseCode = "200", description = "Picture uploaded")
+    @ApiResponse(responseCode = "400", description = "Invalid file (not an image, too large or empty)")
+    @PostMapping(value = "/me/photo", consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, String>> uploadMyPhoto(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(Map.of("photoUrl", photoService.uploadUserPhoto(file)));
+    }
+
+    @Operation(summary = "Remove your profile picture")
+    @ApiResponse(responseCode = "204", description = "Picture removed")
+    @ApiResponse(responseCode = "400", description = "Account has no picture")
+    @DeleteMapping("/me/photo")
+    public ResponseEntity<Void> deleteMyPhoto() {
+        photoService.deleteUserPhoto();
+        return ResponseEntity.noContent().build();
     }
 }

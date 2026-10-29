@@ -14,6 +14,8 @@ interface AuthValue {
   login: (credentials: Credentials) => Promise<void>;
   register: (registration: Registration) => Promise<void>;
   logout: () => void;
+  /** Updates the signed-in user's picture in memory after an upload or removal */
+  setUserPhoto: (photoUrl: string | null) => void;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -34,6 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpired(true);
     logout();
   }, [logout]);
+
+  const setUserPhoto = useCallback((photoUrl: string | null) => {
+    setUser((current) => (current ? { ...current, photoUrl } : current));
+  }, []);
 
   const startSession = useCallback((result: AuthResult) => {
     setSessionExpired(false);
@@ -75,8 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: async (credentials) => startSession(await authApi.login(credentials)),
       register: async (registration) => startSession(await authApi.register(registration)),
       logout,
+      setUserPhoto,
     }),
-    [status, user, sessionExpired, startSession, logout],
+    [status, user, sessionExpired, startSession, logout, setUserPhoto],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

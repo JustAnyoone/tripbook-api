@@ -29,6 +29,10 @@ public class AppUser {
     @ColumnDefault("'USER'")
     private Role role = Role.USER;
 
+    // Cloudinary URL of the account's profile picture. Null means no picture uploaded yet.
+    @Column(name = "photo_url")
+    private String photoUrl;
+
     public Long getId() {
         return id;
     }
@@ -67,5 +71,13 @@ public class AppUser {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
+
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
     }
 }
