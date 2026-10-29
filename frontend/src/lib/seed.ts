@@ -28,14 +28,15 @@ interface TripPlan {
   status: TripStatus;
 }
 
-// Dates are relative to today so the sample always has upcoming and past trips
+// Dates are relative to today. They are all in the future because the API refuses to create a trip
+// that departs in the past; the statuses still vary so the dashboard has something to show.
 const TRIPS: TripPlan[] = [
   { passenger: 'DEMO0001', destination: 'Lisbon', departureInDays: 30, stayDays: 10, price: 5400, currency: 'EUR', status: 'CONFIRMED' },
-  { passenger: 'DEMO0001', destination: 'Rio de Janeiro', departureInDays: -40, stayDays: 7, price: 2100, currency: 'BRL', status: 'CONFIRMED' },
+  { passenger: 'DEMO0001', destination: 'Rio de Janeiro', departureInDays: 5, stayDays: 7, price: 2100, currency: 'BRL', status: 'CONFIRMED' },
   { passenger: 'DEMO0002', destination: 'Tokyo', departureInDays: 75, stayDays: 14, price: 9800, currency: 'USD', status: 'PENDING' },
   { passenger: 'DEMO0002', destination: 'New York', departureInDays: 15, stayDays: 6, price: 3200, currency: 'USD', status: 'CONFIRMED' },
   { passenger: 'DEMO0003', destination: 'Paris', departureInDays: 120, stayDays: null, price: 4700, currency: 'EUR', status: 'PENDING' },
-  { passenger: 'DEMO0004', destination: 'Buenos Aires', departureInDays: -15, stayDays: 5, price: 1800, currency: 'BRL', status: 'CANCELLED' },
+  { passenger: 'DEMO0004', destination: 'Buenos Aires', departureInDays: 45, stayDays: 5, price: 1800, currency: 'BRL', status: 'CANCELLED' },
 ];
 
 export interface SeedResult {
