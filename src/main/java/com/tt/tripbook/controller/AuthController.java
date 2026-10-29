@@ -4,7 +4,6 @@ import com.tt.tripbook.dto.AuthResponse;
 import com.tt.tripbook.dto.LoginRequest;
 import com.tt.tripbook.dto.RegisterRequest;
 import com.tt.tripbook.dto.UserResponse;
-import com.tt.tripbook.model.Role;
 import com.tt.tripbook.service.AuthService;
 import com.tt.tripbook.service.PhotoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,7 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import java.util.Map;
@@ -56,26 +54,6 @@ public class AuthController {
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
         return service.currentUser(jwt.getSubject());
-    }
-
-    @Operation(summary = "Change role of a user (admin only)",
-            description = "Promote a user to ADMIN or demote back to USER.")
-    @ApiResponse(responseCode = "200", description = "Role updated, new token returned")
-    @ApiResponse(responseCode = "403", description = "Only admins can change roles")
-    @ApiResponse(responseCode = "404", description = "User not found")
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/users/{userId}/role")
-    public UserResponse changeRole(@PathVariable Long userId, @RequestParam Role role) {
-        return service.changeRole(userId, role);
-    }
-
-    @Operation(summary = "Promote yourself to ADMIN",
-            description = "Only works if there are no admins yet. Use once to bootstrap the first admin account.")
-    @ApiResponse(responseCode = "200", description = "You are now admin")
-    @ApiResponse(responseCode = "409", description = "An admin already exists")
-    @PostMapping("/promote-first-admin")
-    public UserResponse promoteFirstAdmin(@AuthenticationPrincipal Jwt jwt) {
-        return service.promoteFirstAdmin(jwt.getSubject());
     }
 
     @Operation(summary = "Upload or replace your profile picture",

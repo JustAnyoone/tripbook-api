@@ -2,7 +2,6 @@ package com.tt.tripbook;
 
 import com.tt.tripbook.model.AppUser;
 import java.util.List;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -19,8 +18,7 @@ public final class TestAuth {
                 .header("alg", "none")
                 .subject(user.getEmail())
                 .build();
-        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
-                jwt, List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))));
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
     }
 
     public static void signOut() {

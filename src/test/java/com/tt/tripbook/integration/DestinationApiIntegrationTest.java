@@ -8,8 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.tt.tripbook.TestAuth;
-import com.tt.tripbook.model.AppUser;
-import com.tt.tripbook.model.Role;
 import com.tt.tripbook.repository.DestinationRepository;
 import com.tt.tripbook.repository.PassengerRepository;
 import com.tt.tripbook.repository.TripRepository;
@@ -53,10 +51,7 @@ class DestinationApiIntegrationTest {
         passengerRepository.deleteAll();
         destinationRepository.deleteAll();
         userRepository.deleteAll();
-        // Creating destinations is an admin-only action
-        AppUser admin = user("admin@email.com");
-        admin.setRole(Role.ADMIN);
-        TestAuth.signIn(userRepository.save(admin));
+        TestAuth.signIn(userRepository.save(user("owner@email.com")));
     }
 
     // Leave the shared in-memory database empty for the test classes that run after this one
