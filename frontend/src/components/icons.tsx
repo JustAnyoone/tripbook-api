@@ -100,3 +100,23 @@ export function PlaneIcon({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
+
+// Eye, and the same eye crossed out: show and hide a typed password
+export function EyeIcon() {
+  return (
+    <Icon>
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Icon>
+  );
+}
+
+export function EyeOffIcon() {
+  return (
+    <Icon>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 5.6A10.6 10.6 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3.2 3.9M6.4 7.4A16.8 16.8 0 0 0 2 12s3.6 6.5 10 6.5a9.9 9.9 0 0 0 4-.8" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </Icon>
+  );
+}

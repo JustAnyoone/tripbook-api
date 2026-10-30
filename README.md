@@ -9,6 +9,8 @@ Full-stack app for managing trip bookings: passengers, destinations and the trip
 
 **Live demo:** https://tripbook-api-9dv5.onrender.com
 
+No sign-up needed: on the sign-in page click **Try the demo account**. It opens a shared account filled with sample data (`demo@tripbook.app`, password `demo-tripbook-2026`). The credentials are public on purpose, because the account only holds sample data, and anyone can change it. The first free-tier request after a pause can take about a minute.
+
 The project started as a university assignment (Object-Oriented Programming, CEUB, tag `v1.0-entrega`) and was evolved into a portfolio project: DTOs, pagination, automated tests, continuous integration, JWT authentication, per-account data, a React front-end with light and dark themes, and deployed online with Docker on Render + Aiven MySQL.
 
 ## Screenshots
@@ -51,6 +53,8 @@ The same screen in Brazilian Portuguese:
 - Loading placeholders (skeletons) instead of an empty screen, and a notice on the sign-in page when the session expired
 - Dependabot opens weekly pull requests for Maven, npm, GitHub Actions and Docker updates
 - Export every trip as a CSV file (opens in Excel with accents intact; text that looks like a spreadsheet formula is neutralised)
+- A shared demo account, one click away on the sign-in page, so visitors can try the app without registering
+- Password fields have an eye button to show or hide what is being typed
 - A "Sample data" button adds example destinations, passengers and trips to the signed-in account; running it again adds nothing
 - Light and dark themes: follows the operating system by default, with a toggle that remembers the choice
 - **Trip sharing:** the owner of a trip can share it, by email, with another account. The guest sees it read-only under "Shared with me" and the owner can remove the share at any time

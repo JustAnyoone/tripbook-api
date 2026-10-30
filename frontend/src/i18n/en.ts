@@ -48,6 +48,10 @@ export const en = {
   'auth.haveAccount': 'Already have an account?',
   'auth.newHere': 'New here?',
   'auth.createLink': 'Create an account',
+  'auth.showPassword': 'Show password',
+  'auth.hidePassword': 'Hide password',
+  'auth.demoButton': 'Try the demo account',
+  'auth.demoHint': 'Signs in to a shared account that comes with sample data.',
   'auth.sessionExpired': 'Your session expired. Please sign in again.',
 
   // Sample data

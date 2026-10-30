@@ -85,6 +85,56 @@ describe('authentication flow', () => {
     expect(getToken()).toBeNull();
   });
 
+  it('shows and hides the typed password with the eye button', async () => {
+    stubApi();
+    const user = userEvent.setup();
+    renderApp('/login');
+
+    const field = await screen.findByLabelText('Password');
+    await user.type(field, 'a-long-passphrase');
+    expect(field).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(field).toHaveAttribute('type', 'text');
+    expect(field).toHaveValue('a-long-passphrase');
+
+    await user.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(field).toHaveAttribute('type', 'password');
+  });
+
+  it('creates the demo account the first time it is used and signs in', async () => {
+    stubApi((_method, url) => {
+      if (url.endsWith('/api/auth/login')) return respond(401, { status: 401, message: 'Invalid email or password' });
+      if (url.endsWith('/api/auth/register')) return respond(201, authResult);
+      if (url.endsWith('/api/dashboard')) return respond(200, { statusCounts: [], totals: [], upcoming: [], topDestinations: [] });
+      return respond(200, emptyPage);
+    });
+    const user = userEvent.setup();
+    renderApp('/login');
+
+    await user.click(await screen.findByRole('button', { name: 'Try the demo account' }));
+
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    const registerCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/auth/register'))!;
+    expect(bodyOf(registerCall)).toEqual({ name: 'Demo Traveler', email: 'demo@tripbook.app', password: 'demo-tripbook-2026' });
+    expect(getToken()).toBe('signed.jwt.token');
+  });
+
+  it('signs in to the demo account without registering when it already exists', async () => {
+    stubApi((_method, url) => {
+      if (url.endsWith('/api/auth/login')) return respond(200, authResult);
+      if (url.endsWith('/api/dashboard')) return respond(200, { statusCounts: [], totals: [], upcoming: [], topDestinations: [] });
+      return respond(200, emptyPage);
+    });
+    const user = userEvent.setup();
+    renderApp('/login');
+
+    await user.click(await screen.findByRole('button', { name: 'Try the demo account' }));
+
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/auth/register'))).toBe(false);
+  });
+
   it('creates an account and signs the user in right away', async () => {
     stubApi((_method, url) => {
       if (url.endsWith('/api/auth/register')) return respond(201, authResult);
