@@ -45,6 +45,10 @@ export const pt: Record<MessageKey, string> = {
   'auth.haveAccount': 'Já tem uma conta?',
   'auth.newHere': 'Primeira vez aqui?',
   'auth.createLink': 'Criar uma conta',
+  'auth.showPassword': 'Mostrar senha',
+  'auth.hidePassword': 'Ocultar senha',
+  'auth.demoButton': 'Experimentar a conta de demonstração',
+  'auth.demoHint': 'Entra em uma conta compartilhada que já vem com dados de exemplo.',
   'auth.sessionExpired': 'Sua sessão expirou. Entre novamente.',
 
   'sample.button': 'Dados de exemplo',
