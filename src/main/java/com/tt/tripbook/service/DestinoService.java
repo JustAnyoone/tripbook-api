@@ -8,9 +8,6 @@ import com.tt.tripbook.model.Destino;
 import com.tt.tripbook.repository.DestinoRepository;
 import com.tt.tripbook.repository.ViagemRepository;
 
-import com.tt.tripbook.exception.ConflitoException;
-import com.tt.tripbook.repository.ViagemRepository;
-
 import org.springframework.stereotype.Service;
 
 import java.util.List;
