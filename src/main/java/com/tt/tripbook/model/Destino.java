@@ -9,8 +9,6 @@ import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import jakarta.validation.constraints.NotBlank;
-
 @Schema(description = "Local de destino de uma viagem")
 @Entity
 @Table(name = "destino")
